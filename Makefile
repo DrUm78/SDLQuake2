@@ -74,7 +74,7 @@ endif
 endif
 endif
 
-CC=mipsel-linux-gcc
+CC=/opt/gcw0-toolchain-gcc5.5.0/usr/bin/mipsel-rg350-linux-uclibc-gcc
 
 ifndef OPT_CFLAGS
 ifeq ($(ARCH),axp)
