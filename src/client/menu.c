@@ -1055,7 +1055,7 @@ static menulist_s		s_options_crosshair_box;
 static menuslider_s		s_options_sfxvolume_slider;
 static menulist_s		s_options_joystick_box;
 static menulist_s		s_options_cdvolume_box;
-static menulist_s               s_options_cdshuffle_box;
+static menulist_s		s_options_cdshuffle_box;
 static menulist_s		s_options_quality_list;
 static menulist_s		s_options_compatibility_list;
 static menulist_s		s_options_console_action;
@@ -1167,7 +1167,7 @@ static void UpdateVolumeFunc( void *unused )
 
 static void CDShuffleFunc(void *unused)
 {
-  Cvar_SetValue("cd_shuffle", s_options_cdshuffle_box.curvalue);
+	Cvar_SetValue("cd_shuffle", s_options_cdshuffle_box.curvalue);
 }
 
 static void UpdateCDVolumeFunc( void *unused )
@@ -1215,12 +1215,12 @@ static void UpdateSoundQualityFunc( void *unused )
 {
 	if ( s_options_quality_list.curvalue )
 	{
-		Cvar_SetValue( "s_khz", 22 );
+		Cvar_SetValue( "s_khz", 48 );
 		Cvar_SetValue( "s_loadas8bit", false );
 	}
 	else
 	{
-		Cvar_SetValue( "s_khz", 11 );
+		Cvar_SetValue( "s_khz", 44 );
 		Cvar_SetValue( "s_loadas8bit", true );
 	}
 	
@@ -1255,7 +1255,7 @@ void Options_MenuInit( void )
 
 	static const char *quality_items[] =
 	{
-		"low", "high", 0
+		"44100", "48000", 0
 	};
 
 	static const char *compatibility_items[] =
@@ -1395,19 +1395,19 @@ void Options_MenuInit( void )
 
 	s_options_customize_options_action.generic.type	= MTYPE_ACTION;
 	s_options_customize_options_action.generic.x		= 0;
-	s_options_customize_options_action.generic.y		= 150;
+	s_options_customize_options_action.generic.y		= 140;
 	s_options_customize_options_action.generic.name	= "customize controls";
 	s_options_customize_options_action.generic.callback = CustomizeControlsFunc;
 
 	s_options_defaults_action.generic.type	= MTYPE_ACTION;
 	s_options_defaults_action.generic.x		= 0;
-	s_options_defaults_action.generic.y		= 160;
+	s_options_defaults_action.generic.y		= 150;
 	s_options_defaults_action.generic.name	= "reset defaults";
 	s_options_defaults_action.generic.callback = ControlsResetDefaultsFunc;
 
 	s_options_console_action.generic.type	= MTYPE_ACTION;
 	s_options_console_action.generic.x		= 0;
-	s_options_console_action.generic.y		= 170;
+	s_options_console_action.generic.y		= 160;
 	s_options_console_action.generic.name	= "go to console";
 	s_options_console_action.generic.callback = ConsoleFunc;
 
@@ -1417,7 +1417,7 @@ void Options_MenuInit( void )
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdshuffle_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
+	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
@@ -1425,7 +1425,7 @@ void Options_MenuInit( void )
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
+	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_defaults_action );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_console_action );

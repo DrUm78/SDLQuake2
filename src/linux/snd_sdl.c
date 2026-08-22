@@ -33,6 +33,8 @@
 static int  snd_inited;
 static dma_t *shm;
 
+extern void CDAudio_MixSamples(byte *stream, int len);
+
 static void
 paint_audio (void *unused, Uint8 * stream, int len)
 {
@@ -42,6 +44,7 @@ paint_audio (void *unused, Uint8 * stream, int len)
 		// Check for samplepos overflow?
 		S_PaintChannels (shm->samplepos);
 	}
+	CDAudio_MixSamples(stream, len);
 }
 
 qboolean
@@ -67,12 +70,12 @@ SNDDMA_Init (void)
 
 	/* Set up the desired format */
 	freq = (Cvar_Get("s_khz", "0", CVAR_ARCHIVE))->value;
-	if (freq == 44)
+	if (freq == 48)
+		desired.freq = 48000;
+	else if (freq == 44)
 		desired.freq = 44100;
-	else if (freq == 22)
-		desired.freq = 22050;
 	else
-		desired.freq = 11025;
+		desired.freq = 22050;
 	
 	switch (desired_bits) {
 		case 8:
@@ -90,12 +93,12 @@ SNDDMA_Init (void)
 	}
 	desired.channels = (Cvar_Get("sndchannels", "2", CVAR_ARCHIVE))->value;
 	
-	if (desired.freq == 44100)
+	if (desired.freq == 48000)
+		desired.samples = 4096;
+	else if (desired.freq == 44100)
 		desired.samples = 2048;
-	else if (desired.freq == 22050)
-		desired.samples = 1024;
 	else
-		desired.samples = 512;
+		desired.samples = 1024;
 	
 	desired.callback = paint_audio;
 	
