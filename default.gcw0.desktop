@@ -2,8 +2,5 @@
 Name=Quake II SDL
 Comment=SDLQuake II port for OpenDingux
 Exec=/bin/sh -c ./sdlquake2
-Terminal=false
-Type=Application
-StartupNotify=true
 Icon=q2
-Categories=games;
+Categories=games

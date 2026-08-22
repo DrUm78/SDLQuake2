@@ -199,7 +199,7 @@ void RW_IN_InitJoystick() {
     cl_upspeed = ri.Cvar_Get ("cl_upspeed", "200", 0);
     cl_forwardspeed = ri.Cvar_Get ("cl_forwardspeed", "200", 0);
     cl_sidespeed = ri.Cvar_Get ("cl_sidespeed", "200", 0);
-    cl_yawspeed = ri.Cvar_Get ("cl_yawspeed", "140", 0);
+    cl_yawspeed = ri.Cvar_Get ("cl_yawspeed", "200", 0);
     cl_pitchspeed = ri.Cvar_Get ("cl_pitchspeed", "150", 0);
     
     cl_run = ri.Cvar_Get ("cl_run", "0", CVAR_ARCHIVE);
