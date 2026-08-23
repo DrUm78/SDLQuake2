@@ -74,7 +74,8 @@ endif
 endif
 endif
 
-CC=/opt/gcw0-toolchain-gcc5.5.0/usr/bin/mipsel-rg350-linux-uclibc-gcc
+# Use same compiler (GCC 4.9.1) as JohnnyonFlame's release to ensure save compatibility
+CC=/opt/gcw0-toolchain/usr/bin/mipsel-gcw0-linux-uclibc-gcc
 
 ifndef OPT_CFLAGS
 ifeq ($(ARCH),axp)

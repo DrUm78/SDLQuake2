@@ -22,6 +22,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define Function(f) {#f, f}
 
+/*
+ * Save format version.
+ * Increment this ONLY when the on-disk layout changes:
+ * game_t, gclient_t, edict_t, fields[], clientfields[], levelfields[],
+ * or anything read/written via fread/fwrite in this file.
+ * Do NOT tie this to build date -- unrelated code changes must not
+ * invalidate old savegames.
+ * Let's use the build date of jamesofarrell's binaries to ensure save compatibility between the 2 releases.
+ */
+#define SAVE_VERSION "Oct 19 2019"
+
 mmove_t mmove_reloc;
 
 field_t fields[] = {
@@ -478,7 +489,7 @@ void WriteGame (char *filename, qboolean autosave)
 		gi.error ("Couldn't open %s", filename);
 
 	memset (str, 0, sizeof(str));
-	strcpy (str, __DATE__);
+	strcpy (str, SAVE_VERSION); // was __DATE__
 	fwrite (str, sizeof(str), 1, f);
 
 	game.autosaved = autosave;
@@ -504,7 +515,10 @@ void ReadGame (char *filename)
 		gi.error ("Couldn't open %s", filename);
 
 	fread (str, sizeof(str), 1, f);
-	if (!(oldsave->value) && strcmp (str, __DATE__))
+	// Compare against our manually-versioned save format identifier
+	// instead of the build date, so unrelated code changes don't
+	// invalidate old savegames -- only actual layout changes do.
+	if (!(oldsave->value) && strcmp (str, SAVE_VERSION))
 	{
 		fclose (f);
 		gi.error ("Savegame from an older version.\n");

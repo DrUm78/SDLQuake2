@@ -148,7 +148,7 @@ void S_Init (void)
 		soundtime = 0;
 		paintedtime = 0;
 
-		Com_Printf ("sound sampling rate: %i\n", dma.speed);
+		Com_Printf ("sound sampling rate: %i hz\n", dma.speed);
 
 		S_StopAllSounds ();
 	}

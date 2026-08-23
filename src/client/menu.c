@@ -1255,7 +1255,7 @@ void Options_MenuInit( void )
 
 	static const char *quality_items[] =
 	{
-		"44100", "48000", 0
+		"44100 hz", "48000 hz", 0
 	};
 
 	static const char *compatibility_items[] =
@@ -1316,7 +1316,7 @@ void Options_MenuInit( void )
 	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_quality_list.generic.x		= 0;
 	s_options_quality_list.generic.y		= 30;;
-	s_options_quality_list.generic.name		= "sound quality";
+	s_options_quality_list.generic.name		= "sampling rate";
 	s_options_quality_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_quality_list.itemnames		= quality_items;
 	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
