@@ -30,6 +30,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #include "SDL.h"
 
@@ -55,11 +59,14 @@ static qboolean paused      = false;
 static qboolean playLooping = false;
 static int      currentTrack = 0;
 
+/* Maximum number of tracks CD_ScanMusicDir() will collect. 256 is
+   generous for an embedded target's music folder. */
+#define MP3_MAX_TRACKS 256
+
 static cvar_t *cd_volume;
 static cvar_t *cd_nocd;
 static cvar_t *cd_musicdir;   /* replaces cd_dev: mp3 subdirectory */
-static cvar_t *cd_mintrack;
-static cvar_t *cd_maxtrack;
+static cvar_t *cd_mintrack;   /* floor filter for CDAudio_RandomPlay, default skips the data track */
 static float   cdvolume = 1.0f;
 
 static void CD_f(void);
@@ -71,15 +78,103 @@ static void CD_f(void);
 /*
 	NOTE: adapt this call to whatever function your engine actually
 	uses to resolve the current data directory (gamedir). In Quake2
-	this is usually FS_Gamedir() (qcommon/files.c). The file naming
-	follows the usual "trackNN.mp3" convention used by Quake/Quake2
-	ports with digital music (track01 = the "data" track, so it is
-	never played; music starts at track02).
+	this is usually FS_Gamedir() (qcommon/files.c).
 */
-static void CD_TrackPath(char *dst, size_t dstSize, int track)
+
+/* Creates the music directory if it doesn't exist yet. Best-effort:
+   if it fails (permissions, read-only filesystem...), CD_TrackPath()
+   below will simply fail to find any file in it and CDAudio_Play()
+   will log that and do nothing, same as a missing file today. */
+static void CD_EnsureMusicDir(void)
 {
+	char dir[MAX_OSPATH];
+	struct stat st;
+
+	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
+
+	if (stat(dir, &st) == 0)
+		return; /* already there (file or dir, either way don't touch it) */
+
+	if (mkdir(dir, 0755) != 0)
+		Com_DPrintf("CD_EnsureMusicDir: could not create %s\n", dir);
+}
+
+/* Resolves the file for a given track number, accepting both naming
+   conventions: "trackNN.mp3" (classic Quake/Quake2 CD-rip convention)
+   and the shorter "NN.mp3". Tries trackNN.mp3 first. Returns true and
+   fills dst with the path that was actually found; returns false if
+   neither form exists (dst is still filled with the trackNN.mp3 form,
+   handy for the "file not found" log message). */
+static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
+{
+	char alt[MAX_OSPATH];
+
+	CD_EnsureMusicDir();
+
 	Com_sprintf(dst, dstSize, "%s/%s/track%02d.mp3",
 		FS_Gamedir(), cd_musicdir->string, track);
+	if (access(dst, F_OK) == 0)
+		return true;
+
+	Com_sprintf(alt, sizeof(alt), "%s/%s/%02d.mp3",
+		FS_Gamedir(), cd_musicdir->string, track);
+	if (access(alt, F_OK) == 0)
+	{
+		Com_sprintf(dst, dstSize, "%s", alt);
+		return true;
+	}
+
+	return false;
+}
+
+/* Scans the music directory for files matching either "trackNN.mp3"
+   or "NN.mp3" and collects the track numbers found into 'tracks'
+   (deduplicated - if both forms exist for the same number it's only
+   counted once). Tracks below cd_mintrack are skipped (default 2,
+   to skip a would-be "data track" the way real Quake2 CDs do).
+   Returns the number of tracks found. */
+static int CD_ScanMusicDir(int *tracks, int maxTracks)
+{
+	char dir[MAX_OSPATH];
+	DIR *d;
+	struct dirent *entry;
+	int count = 0;
+	int i;
+
+	CD_EnsureMusicDir();
+	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
+
+	d = opendir(dir);
+	if (!d)
+		return 0;
+
+	while (count < maxTracks && (entry = readdir(d)) != NULL)
+	{
+		int track, chars;
+		qboolean matched = false;
+		size_t nameLen = strlen(entry->d_name);
+
+		if (sscanf(entry->d_name, "track%d.mp3%n", &track, &chars) == 1 &&
+			(size_t)chars == nameLen)
+			matched = true;
+		else if (sscanf(entry->d_name, "%d.mp3%n", &track, &chars) == 1 &&
+			(size_t)chars == nameLen)
+			matched = true;
+
+		if (!matched || track < (int)cd_mintrack->value)
+			continue;
+
+		for (i = 0; i < count; i++)
+			if (tracks[i] == track)
+				break;
+		if (i < count)
+			continue; /* already have this track number */
+
+		tracks[count++] = track;
+	}
+
+	closedir(d);
+	return count;
 }
 
 /* ------------------------------------------------------------------ */
@@ -157,7 +252,13 @@ void CDAudio_Play(int track, qboolean looping)
 	if (!enabled || !initialized)
 		return;
 
-	CD_TrackPath(path, sizeof(path), track);
+	if (!CD_TrackPath(path, sizeof(path), track))
+	{
+		Com_DPrintf("CDAudio_Play: no file found for track %d "
+			"(tried track%02d.mp3 and %02d.mp3 in '%s')\n",
+			track, track, track, cd_musicdir->string);
+		return;
+	}
 
 	SDL_LockAudio();
 
@@ -175,6 +276,18 @@ void CDAudio_Play(int track, qboolean looping)
 		return;
 	}
 
+	if (mp3.channels != (drmp3_uint32)dma.channels ||
+		mp3.sampleRate != (drmp3_uint32)dma.speed)
+	{
+		Com_Printf("CDAudio_Play: %s is %u Hz / %u channels, "
+			"expected %d Hz / %d channels -> re-encode this file "
+			"(dr_mp3 does not resample).\n",
+			path, mp3.sampleRate, mp3.channels, dma.speed, dma.channels);
+		drmp3_uninit(&mp3);
+		SDL_UnlockAudio();
+		return;
+	}
+
 	mp3Valid     = true;
 	playLooping  = looping;
 	paused       = false;
@@ -184,22 +297,27 @@ void CDAudio_Play(int track, qboolean looping)
 	SDL_UnlockAudio();
 }
 
-/* Picks a random track in [cd_mintrack, cd_maxtrack] and plays it in a
-   loop. Replaces walking the real CD's track table. */
+/* Picks a random track among the .mp3 files actually present in the
+   music directory and plays it in a loop. Replaces walking the real
+   CD's track table. */
 void CDAudio_RandomPlay(void)
 {
-	int lo, hi, track;
+	int tracks[MP3_MAX_TRACKS];
+	int count, idx;
 
 	if (!enabled || !initialized)
 		return;
 
-	lo = (int) cd_mintrack->value;
-	hi = (int) cd_maxtrack->value;
-	if (hi < lo)
+	count = CD_ScanMusicDir(tracks, MP3_MAX_TRACKS);
+	if (count == 0)
+	{
+		Com_DPrintf("CDAudio_RandomPlay: no track*.mp3 / *.mp3 files "
+			"found in '%s'\n", cd_musicdir->string);
 		return;
+	}
 
-	track = lo + (int)(((float) rand() / ((float) RAND_MAX + 1.0f)) * (hi - lo + 1));
-	CDAudio_Play(track, true);
+	idx = (int)(((float) rand() / ((float) RAND_MAX + 1.0f)) * count);
+	CDAudio_Play(tracks[idx], true);
 }
 
 void CDAudio_Stop(void)
@@ -261,7 +379,6 @@ int CDAudio_Init(void)
 	cd_volume   = Cvar_Get("cd_volume", "1", CVAR_ARCHIVE);
 	cd_musicdir = Cvar_Get("cd_musicdir", "music", CVAR_ARCHIVE);
 	cd_mintrack = Cvar_Get("cd_mintrack", "2", CVAR_ARCHIVE);
-	cd_maxtrack = Cvar_Get("cd_maxtrack", "11", CVAR_ARCHIVE);
 
 	cdvolume = cd_volume->value;
 

@@ -1300,7 +1300,7 @@ void Options_MenuInit( void )
 	s_options_cdvolume_box.generic.type	= MTYPE_SPINCONTROL;
 	s_options_cdvolume_box.generic.x		= 0;
 	s_options_cdvolume_box.generic.y		= 10;
-	s_options_cdvolume_box.generic.name	= "CD music";
+	s_options_cdvolume_box.generic.name	= "mp3 music";
 	s_options_cdvolume_box.generic.callback	= UpdateCDVolumeFunc;
 	s_options_cdvolume_box.itemnames		= cd_music_items;
 	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
@@ -1308,7 +1308,7 @@ void Options_MenuInit( void )
 	s_options_cdshuffle_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_cdshuffle_box.generic.x = 0;
 	s_options_cdshuffle_box.generic.y = 20;
-	s_options_cdshuffle_box.generic.name = "CD shuffle";
+	s_options_cdshuffle_box.generic.name = "mp3 shuffle";
 	s_options_cdshuffle_box.generic.callback = CDShuffleFunc;
 	s_options_cdshuffle_box.itemnames = cd_shuffle;
 	s_options_cdshuffle_box.curvalue = Cvar_VariableValue("cd_shuffle");;
