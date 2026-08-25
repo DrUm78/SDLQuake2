@@ -15,12 +15,14 @@
 	SDL 1.2 / OSS only allow a single audio device to be open at a time
 	on this kind of embedded target.
 
-	Asset constraint: dr_mp3 (the "simple" API used here) does not
-	resample. .mp3 files must therefore be encoded at the same sample
-	rate / channel count as the game's audio output (typically
-	44100 Hz stereo, see the s_khz / sndchannels cvars). A file that
-	doesn't match is rejected at load time with a clear message
-	instead of being played back garbled.
+	Asset constraint: none anymore regarding sample rate - CDAudio_Play()
+	accepts any mono or stereo MP3 and CDAudio_MixSamples() resamples
+	it on the fly (simple linear interpolation) to match the game's
+	audio output format (dma.speed / dma.channels), and remaps mono
+	<-> stereo as needed. This keeps memory use low (dr_mp3's
+	streaming API itself never resamples - only its "decode the whole
+	file into RAM" functions can, which isn't practical here for
+	continuously-looping background music on an embedded target).
 
 	This program is free software; you can redistribute it and/or
 	modify it under the terms of the GNU General Public License
@@ -44,10 +46,10 @@
 #define DR_MP3_NO_STDIO_LARGE   /* no need for very long paths here */
 #include "dr_mp3.h"
 
-/* Size of the temporary decode buffer, in PCM frames (1 frame = 1
-   sample per channel). 4096 is plenty for a typical SDL callback
-   (usually <= 2048 mono samples, so <= 4096 for stereo). */
-#define MP3_MIX_FRAMES 4096
+/* Number of interleaved source-format PCM frames kept buffered for
+   resampling. 8192 frames * up to 2 channels * 2 bytes = 32 KB, cheap
+   enough to keep static on an embedded target. */
+#define MP3_SRC_BUF_FRAMES 8192
 
 static qboolean initialized = false;
 static qboolean enabled     = true;
@@ -58,6 +60,20 @@ static qboolean playing     = false;   /* we should be producing sound */
 static qboolean paused      = false;
 static qboolean playLooping = false;
 static int      currentTrack = 0;
+static float    mp3Ratio    = 1.0f;    /* source sampleRate / dma.speed */
+
+/* Small resampler state: a buffer of already-decoded source-format
+   frames plus a fractional read cursor into it. Reset on every
+   CDAudio_Play(). See MP3_Refill() / CDAudio_MixSamples(). */
+typedef struct
+{
+	drmp3_int16 buf[MP3_SRC_BUF_FRAMES * 2]; /* interleaved, up to 2 src channels */
+	int         avail; /* valid frames currently in buf, starting at index 0 */
+	float       pos;   /* fractional read position, in source frames, into buf */
+	qboolean    eof;   /* true once the decoder has nothing left to give and we're not looping */
+} mp3_resample_t;
+
+static mp3_resample_t mp3rs;
 
 /* Maximum number of tracks CD_ScanMusicDir() will collect. 256 is
    generous for an embedded target's music folder. */
@@ -178,66 +194,177 @@ static int CD_ScanMusicDir(int *tracks, int maxTracks)
 }
 
 /* ------------------------------------------------------------------ */
-/* Mixing: called from the SDL audio callback (snd_sdl.c)             */
+/* Resampling / mixing: called from the SDL audio callback (snd_sdl.c) */
 /* ------------------------------------------------------------------ */
+
+/* Compacts already-consumed frames out of mp3rs.buf and decodes more
+   source PCM to top it back up. Handles looping transparently: if the
+   decoder runs dry and playLooping is set, it seeks back to frame 0
+   and keeps filling. Leaves mp3rs.eof set once there is truly nothing
+   left to decode (non-looping track that reached its end). */
+static void MP3_Refill(void)
+{
+	int srcCh = (int) mp3.channels;
+	int keep;
+	drmp3_uint64 framesRead;
+
+	if (mp3rs.eof)
+		return;
+
+	keep = (int) mp3rs.pos;
+	if (keep > 0 && keep < mp3rs.avail)
+	{
+		int remain = mp3rs.avail - keep;
+		memmove(mp3rs.buf, mp3rs.buf + keep * srcCh, remain * srcCh * sizeof(drmp3_int16));
+		mp3rs.avail = remain;
+		mp3rs.pos  -= (float) keep;
+	}
+	else if (keep >= mp3rs.avail)
+	{
+		mp3rs.avail = 0;
+		mp3rs.pos   = 0.0f;
+	}
+
+	if (mp3rs.avail >= MP3_SRC_BUF_FRAMES - 1)
+		return; /* still enough buffered, nothing to do */
+
+	framesRead = drmp3_read_pcm_frames_s16(&mp3,
+		MP3_SRC_BUF_FRAMES - mp3rs.avail, mp3rs.buf + mp3rs.avail * srcCh);
+
+	if (framesRead == 0)
+	{
+		if (playLooping)
+		{
+			drmp3_seek_to_pcm_frame(&mp3, 0);
+			framesRead = drmp3_read_pcm_frames_s16(&mp3,
+				MP3_SRC_BUF_FRAMES - mp3rs.avail, mp3rs.buf + mp3rs.avail * srcCh);
+		}
+
+		if (framesRead == 0)
+		{
+			mp3rs.eof = true;
+			return;
+		}
+	}
+
+	mp3rs.avail += (int) framesRead;
+}
+
+/* Converts one already-resampled source-format sample (srcCh values)
+   to the destination channel count (1 or 2). Anything other than a
+   1<->2 conversion (shouldn't happen for MP3 in practice) falls back
+   to silence rather than reading out of bounds. */
+static void MP3_RemapChannels(const float *src, int srcCh, float *dst, int destCh)
+{
+	int c;
+
+	if (srcCh == destCh)
+	{
+		for (c = 0; c < destCh; c++)
+			dst[c] = src[c];
+	}
+	else if (srcCh == 1 && destCh == 2)
+	{
+		dst[0] = dst[1] = src[0];
+	}
+	else if (srcCh == 2 && destCh == 1)
+	{
+		dst[0] = (src[0] + src[1]) * 0.5f;
+	}
+	else
+	{
+		for (c = 0; c < destCh; c++)
+			dst[c] = 0.0f;
+	}
+}
 
 void CDAudio_MixSamples(byte *stream, int len)
 {
-	drmp3_int16 buf[MP3_MIX_FRAMES];
 	Sint16 *dst = (Sint16 *) stream;
-	int frameBytes;
-	drmp3_uint64 framesWanted, chunk, framesRead;
-	int i;
+	int destCh, srcCh;
+	int frameBytes, framesWanted, i;
 
 	if (!enabled || !playing || paused || !mp3Valid)
 		return;
 
-	/* This mixer only handles 16-bit audio (the only format
-	   drmp3_read_pcm_frames_s16 produces); if the game runs in
+	/* This mixer only handles 16-bit destination audio (the only
+	   format drmp3_read_pcm_frames_s16 produces); if the game runs in
 	   8-bit mode we simply don't mix any music. */
 	if (dma.samplebits != 16)
 		return;
 
-	frameBytes = (dma.samplebits / 8) * dma.channels;
+	destCh = dma.channels;
+	srcCh  = (int) mp3.channels;
+	frameBytes = (dma.samplebits / 8) * destCh;
 	if (frameBytes <= 0)
 		return;
 
-	framesWanted = (drmp3_uint64)len / (drmp3_uint64)frameBytes;
+	framesWanted = len / frameBytes;
 
-	while (framesWanted > 0)
+	for (i = 0; i < framesWanted; i++)
 	{
-		chunk = framesWanted;
-		if (chunk > MP3_MIX_FRAMES / dma.channels)
-			chunk = MP3_MIX_FRAMES / dma.channels;
+		int srcFrame;
+		float frac;
+		float srcSample[2];
+		float outSample[2];
+		int c;
 
-		framesRead = drmp3_read_pcm_frames_s16(&mp3, chunk, buf);
+		if (mp3rs.avail - (int) mp3rs.pos < 2 && !mp3rs.eof)
+			MP3_Refill();
 
-		for (i = 0; i < (int)(framesRead * dma.channels); i++)
+		srcFrame = (int) mp3rs.pos;
+
+		if (srcFrame + 1 >= mp3rs.avail)
 		{
-			int mixed = dst[i] + (int)((float)buf[i] * cdvolume);
-			if (mixed > 32767) mixed = 32767;
-			else if (mixed < -32768) mixed = -32768;
-			dst[i] = (Sint16) mixed;
-		}
-
-		dst          += framesRead * dma.channels;
-		framesWanted -= framesRead;
-
-		if (framesRead < chunk)
-		{
-			/* end of file reached */
-			if (playLooping)
+			/* ran out of buffered data mid-callback: either it's a
+			   genuine end of (non-looping) track, or looping just
+			   wrapped and needs one more refill to have 2 frames
+			   available for interpolation. */
+			if (mp3rs.eof)
 			{
-				drmp3_seek_to_pcm_frame(&mp3, 0);
-				if (framesRead == 0)
-					break; /* avoid an infinite loop if the file is empty */
+				if (playLooping)
+				{
+					drmp3_seek_to_pcm_frame(&mp3, 0);
+					mp3rs.avail = 0;
+					mp3rs.pos   = 0.0f;
+					mp3rs.eof   = false;
+					MP3_Refill();
+					srcFrame = (int) mp3rs.pos;
+					if (srcFrame + 1 >= mp3rs.avail)
+						break; /* still nothing - leave the rest of stream as FX-only */
+				}
+				else
+				{
+					playing = false;
+					break;
+				}
 			}
 			else
 			{
-				playing = false;
-				break;
+				break; /* decoder starved this callback, try again next time */
 			}
 		}
+
+		frac = mp3rs.pos - (float) srcFrame;
+
+		for (c = 0; c < srcCh; c++)
+		{
+			drmp3_int16 a = mp3rs.buf[srcFrame * srcCh + c];
+			drmp3_int16 b = mp3rs.buf[(srcFrame + 1) * srcCh + c];
+			srcSample[c] = (float) a + (float) (b - a) * frac;
+		}
+
+		MP3_RemapChannels(srcSample, srcCh, outSample, destCh);
+
+		for (c = 0; c < destCh; c++)
+		{
+			int mixed = dst[i * destCh + c] + (int) (outSample[c] * cdvolume);
+			if (mixed > 32767) mixed = 32767;
+			else if (mixed < -32768) mixed = -32768;
+			dst[i * destCh + c] = (Sint16) mixed;
+		}
+
+		mp3rs.pos += mp3Ratio;
 	}
 }
 
@@ -276,17 +403,21 @@ void CDAudio_Play(int track, qboolean looping)
 		return;
 	}
 
-	if (mp3.channels != (drmp3_uint32)dma.channels ||
-		mp3.sampleRate != (drmp3_uint32)dma.speed)
+	if (mp3.channels < 1 || mp3.channels > 2)
 	{
-		Com_Printf("CDAudio_Play: %s is %u Hz / %u channels, "
-			"expected %d Hz / %d channels -> re-encode this file "
-			"(dr_mp3 does not resample).\n",
-			path, mp3.sampleRate, mp3.channels, dma.speed, dma.channels);
+		Com_Printf("CDAudio_Play: %s has %u channels, only mono/stereo "
+			"MP3 is supported.\n", path, mp3.channels);
 		drmp3_uninit(&mp3);
 		SDL_UnlockAudio();
 		return;
 	}
+
+	mp3Ratio = (float) mp3.sampleRate / (float) dma.speed;
+	memset(&mp3rs, 0, sizeof(mp3rs));
+
+	Com_DPrintf("CDAudio_Play: %s is %u Hz / %u channels, converting to "
+		"%d Hz / %d channels on the fly.\n",
+		path, mp3.sampleRate, mp3.channels, dma.speed, dma.channels);
 
 	mp3Valid     = true;
 	playLooping  = looping;

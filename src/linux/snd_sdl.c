@@ -70,12 +70,12 @@ SNDDMA_Init (void)
 
 	/* Set up the desired format */
 	freq = (Cvar_Get("s_khz", "0", CVAR_ARCHIVE))->value;
-	if (freq == 48)
-		desired.freq = 48000;
-	else if (freq == 44)
+	if (freq == 44)
 		desired.freq = 44100;
-	else
+	else if (freq == 22)
 		desired.freq = 22050;
+	else
+		desired.freq = 11025;
 	
 	switch (desired_bits) {
 		case 8:
@@ -93,12 +93,12 @@ SNDDMA_Init (void)
 	}
 	desired.channels = (Cvar_Get("sndchannels", "2", CVAR_ARCHIVE))->value;
 	
-	if (desired.freq == 48000)
-		desired.samples = 4096;
-	else if (desired.freq == 44100)
+	if (desired.freq == 44100)
 		desired.samples = 2048;
-	else
+	else if (desired.freq == 22050)
 		desired.samples = 1024;
+	else
+		desired.samples = 512;
 	
 	desired.callback = paint_audio;
 	
