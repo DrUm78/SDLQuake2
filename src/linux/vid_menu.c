@@ -51,6 +51,7 @@ extern cvar_t *vid_ref;
 extern cvar_t *vid_fullscreen;
 extern cvar_t *vid_gamma;
 extern cvar_t *scr_viewsize;
+extern cvar_t *cl_drawfps; // FPS hack
 
 static cvar_t *gl_mode;
 static cvar_t *gl_driver;
@@ -87,6 +88,7 @@ static menuslider_s		s_screensize_slider[2];
 static menuslider_s		s_brightness_slider[2];
 static menulist_s  		s_fs_box[2];
 static menulist_s  		s_stipple_box;
+static menulist_s  		s_draw_fps;
 static menulist_s  		s_paletted_texture_box;
 static menulist_s  		s_windowed_mouse;
 static menuaction_s		s_apply_action[2];
@@ -160,6 +162,7 @@ static void ApplyChanges( void *unused )
 
 	Cvar_SetValue( "vid_gamma", gamma );
 	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
+	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
 	Cvar_SetValue( "gl_picmip", 3 - s_tq_slider.curvalue );
 	Cvar_SetValue( "vid_fullscreen", s_fs_box[s_current_menu_index].curvalue );
 	Cvar_SetValue( "gl_ext_palettedtexture", s_paletted_texture_box.curvalue );
@@ -320,6 +323,9 @@ void VID_MenuInit( void )
 	if ( !sw_stipplealpha )
 		sw_stipplealpha = Cvar_Get( "sw_stipplealpha", "0", CVAR_ARCHIVE );
 
+	if ( !cl_drawfps )
+		cl_drawfps = Cvar_Get( "cl_drawfps", "0", CVAR_ARCHIVE );
+
 	if ( !_windowed_mouse)
 		_windowed_mouse = Cvar_Get( "_windowed_mouse", "0", CVAR_ARCHIVE );
 
@@ -443,6 +449,13 @@ void VID_MenuInit( void )
 	s_stipple_box.curvalue = sw_stipplealpha->value;
 	s_stipple_box.itemnames = yesno_names;
 
+	s_draw_fps.generic.type = MTYPE_SPINCONTROL;
+	s_draw_fps.generic.x	= 0;
+	s_draw_fps.generic.y	= 50;
+	s_draw_fps.generic.name	= "show fps";
+	s_draw_fps.curvalue = cl_drawfps->value;
+	s_draw_fps.itemnames = yesno_names;
+
 	s_windowed_mouse.generic.type = MTYPE_SPINCONTROL;
 	s_windowed_mouse.generic.x  = 0;
 	s_windowed_mouse.generic.y  = 72;
@@ -477,6 +490,7 @@ void VID_MenuInit( void )
 	Menu_AddItem( &s_software_menu, ( void * ) &s_brightness_slider[SOFTWARE_MENU] );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_fs_box[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_stipple_box );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_fps );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_windowed_mouse );
 
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_ref_list[OPENGL_MENU] );
