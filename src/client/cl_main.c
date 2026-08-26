@@ -1460,7 +1460,11 @@ void CL_InitLocal (void)
 	cl_autoskins = Cvar_Get ("cl_autoskins", "0", 0);
 	cl_predict = Cvar_Get ("cl_predict", "1", 0);
 //	cl_minfps = Cvar_Get ("cl_minfps", "5", 0);
+#if defined __gcw__
+	cl_maxfps = Cvar_Get ("cl_maxfps", "60", 0);
+#else
 	cl_maxfps = Cvar_Get ("cl_maxfps", "90", 0);
+#endif
 	cl_drawfps = Cvar_Get("cl_drawfps","0",CVAR_ARCHIVE); // FPS hack
 
 #ifdef QMAX
