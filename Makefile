@@ -20,8 +20,8 @@ BUILD_FXGL=NO		# FXMesa driver. Not tested. (used only for V1 and V2).
 BUILD_SDL=YES		# SDL software driver. Works fine for some people.
 BUILD_SDLGL=NO		# SDL OpenGL driver. Works fine for some people.
 BUILD_CTFDLL=NO		# game$(ARCH).so for ctf
-BUILD_XATRIX=NO		# game$(ARCH).so for xatrix (see README.r for details)
-BUILD_ROGUE=NO		# game$(ARCH).so for rogue (see README.r for details)
+BUILD_XATRIX=YES	# game$(ARCH).so for xatrix (see README.r for details)
+BUILD_ROGUE=YES		# game$(ARCH).so for rogue (see README.r for details)
 BUILD_JOYSTICK=YES	# build in joystick support
 BUILD_ARTS=NO		# build in support for libaRts sound.
 BUILD_ALSA=NO		# build in support for ALSA (default sound on 2.6)
@@ -245,7 +245,7 @@ DO_SHLIB_AS=$(CC) $(CFLAGS) $(SHLIBCFLAGS) -DELF -x assembler-with-cpp -o $@ -c 
 
 .PHONY : targets build_debug build_release clean clean-debug clean-release clean2
 
-TARGETS=$(BUILDDIR)/quake2 $(BUILDDIR)/game$(ARCH).$(SHLIBEXT)
+TARGETS=$(BUILDDIR)/quake2 $(BUILDDIR)/baseq2/game$(ARCH).$(SHLIBEXT)
 ifeq ($(strip $(BUILD_DEDICATED)),YES)
  TARGETS += $(BUILDDIR)/q2ded
 endif
@@ -457,7 +457,7 @@ build_debug:
 		$(BUILD_DEBUG_DIR)/ded \
 		$(BUILD_DEBUG_DIR)/ref_soft \
 		$(BUILD_DEBUG_DIR)/ref_gl \
-		$(BUILD_DEBUG_DIR)/game \
+		$(BUILD_DEBUG_DIR)/baseq2 \
 		$(BUILD_DEBUG_DIR)/ctf \
 		$(BUILD_DEBUG_DIR)/xatrix \
 		$(BUILD_DEBUG_DIR)/rogue
@@ -469,7 +469,7 @@ build_release:
 		$(BUILD_RELEASE_DIR)/ded \
 		$(BUILD_RELEASE_DIR)/ref_soft \
 		$(BUILD_RELEASE_DIR)/ref_gl \
-		$(BUILD_RELEASE_DIR)/game \
+		$(BUILD_RELEASE_DIR)/baseq2 \
 		$(BUILD_RELEASE_DIR)/ctf \
 		$(BUILD_RELEASE_DIR)/xatrix \
 		$(BUILD_RELEASE_DIR)/rogue
@@ -827,200 +827,200 @@ $(BUILDDIR)/ded/cl_null.o :    $(NULL_DIR)/cl_null.c
 #############################################################################
 
 GAME_OBJS = \
-	$(BUILDDIR)/game/g_ai.o \
-	$(BUILDDIR)/game/p_client.o \
-	$(BUILDDIR)/game/g_chase.o \
-	$(BUILDDIR)/game/g_cmds.o \
-	$(BUILDDIR)/game/g_svcmds.o \
-	$(BUILDDIR)/game/g_combat.o \
-	$(BUILDDIR)/game/g_func.o \
-	$(BUILDDIR)/game/g_items.o \
-	$(BUILDDIR)/game/g_main.o \
-	$(BUILDDIR)/game/g_misc.o \
-	$(BUILDDIR)/game/g_monster.o \
-	$(BUILDDIR)/game/g_phys.o \
-	$(BUILDDIR)/game/g_save.o \
-	$(BUILDDIR)/game/g_spawn.o \
-	$(BUILDDIR)/game/g_target.o \
-	$(BUILDDIR)/game/g_trigger.o \
-	$(BUILDDIR)/game/g_turret.o \
-	$(BUILDDIR)/game/g_utils.o \
-	$(BUILDDIR)/game/g_weapon.o \
-	$(BUILDDIR)/game/m_actor.o \
-	$(BUILDDIR)/game/m_berserk.o \
-	$(BUILDDIR)/game/m_boss2.o \
-	$(BUILDDIR)/game/m_boss3.o \
-	$(BUILDDIR)/game/m_boss31.o \
-	$(BUILDDIR)/game/m_boss32.o \
-	$(BUILDDIR)/game/m_brain.o \
-	$(BUILDDIR)/game/m_chick.o \
-	$(BUILDDIR)/game/m_flipper.o \
-	$(BUILDDIR)/game/m_float.o \
-	$(BUILDDIR)/game/m_flyer.o \
-	$(BUILDDIR)/game/m_gladiator.o \
-	$(BUILDDIR)/game/m_gunner.o \
-	$(BUILDDIR)/game/m_hover.o \
-	$(BUILDDIR)/game/m_infantry.o \
-	$(BUILDDIR)/game/m_insane.o \
-	$(BUILDDIR)/game/m_medic.o \
-	$(BUILDDIR)/game/m_move.o \
-	$(BUILDDIR)/game/m_mutant.o \
-	$(BUILDDIR)/game/m_parasite.o \
-	$(BUILDDIR)/game/m_soldier.o \
-	$(BUILDDIR)/game/m_supertank.o \
-	$(BUILDDIR)/game/m_tank.o \
-	$(BUILDDIR)/game/p_hud.o \
-	$(BUILDDIR)/game/p_trail.o \
-	$(BUILDDIR)/game/p_view.o \
-	$(BUILDDIR)/game/p_weapon.o \
-	$(BUILDDIR)/game/q_shared.o \
-	$(BUILDDIR)/game/m_flash.o
+	$(BUILDDIR)/baseq2/g_ai.o \
+	$(BUILDDIR)/baseq2/p_client.o \
+	$(BUILDDIR)/baseq2/g_chase.o \
+	$(BUILDDIR)/baseq2/g_cmds.o \
+	$(BUILDDIR)/baseq2/g_svcmds.o \
+	$(BUILDDIR)/baseq2/g_combat.o \
+	$(BUILDDIR)/baseq2/g_func.o \
+	$(BUILDDIR)/baseq2/g_items.o \
+	$(BUILDDIR)/baseq2/g_main.o \
+	$(BUILDDIR)/baseq2/g_misc.o \
+	$(BUILDDIR)/baseq2/g_monster.o \
+	$(BUILDDIR)/baseq2/g_phys.o \
+	$(BUILDDIR)/baseq2/g_save.o \
+	$(BUILDDIR)/baseq2/g_spawn.o \
+	$(BUILDDIR)/baseq2/g_target.o \
+	$(BUILDDIR)/baseq2/g_trigger.o \
+	$(BUILDDIR)/baseq2/g_turret.o \
+	$(BUILDDIR)/baseq2/g_utils.o \
+	$(BUILDDIR)/baseq2/g_weapon.o \
+	$(BUILDDIR)/baseq2/m_actor.o \
+	$(BUILDDIR)/baseq2/m_berserk.o \
+	$(BUILDDIR)/baseq2/m_boss2.o \
+	$(BUILDDIR)/baseq2/m_boss3.o \
+	$(BUILDDIR)/baseq2/m_boss31.o \
+	$(BUILDDIR)/baseq2/m_boss32.o \
+	$(BUILDDIR)/baseq2/m_brain.o \
+	$(BUILDDIR)/baseq2/m_chick.o \
+	$(BUILDDIR)/baseq2/m_flipper.o \
+	$(BUILDDIR)/baseq2/m_float.o \
+	$(BUILDDIR)/baseq2/m_flyer.o \
+	$(BUILDDIR)/baseq2/m_gladiator.o \
+	$(BUILDDIR)/baseq2/m_gunner.o \
+	$(BUILDDIR)/baseq2/m_hover.o \
+	$(BUILDDIR)/baseq2/m_infantry.o \
+	$(BUILDDIR)/baseq2/m_insane.o \
+	$(BUILDDIR)/baseq2/m_medic.o \
+	$(BUILDDIR)/baseq2/m_move.o \
+	$(BUILDDIR)/baseq2/m_mutant.o \
+	$(BUILDDIR)/baseq2/m_parasite.o \
+	$(BUILDDIR)/baseq2/m_soldier.o \
+	$(BUILDDIR)/baseq2/m_supertank.o \
+	$(BUILDDIR)/baseq2/m_tank.o \
+	$(BUILDDIR)/baseq2/p_hud.o \
+	$(BUILDDIR)/baseq2/p_trail.o \
+	$(BUILDDIR)/baseq2/p_view.o \
+	$(BUILDDIR)/baseq2/p_weapon.o \
+	$(BUILDDIR)/baseq2/q_shared.o \
+	$(BUILDDIR)/baseq2/m_flash.o
 
-$(BUILDDIR)/game$(ARCH).$(SHLIBEXT) : $(GAME_OBJS)
+$(BUILDDIR)/baseq2/game$(ARCH).$(SHLIBEXT) : $(GAME_OBJS)
 	$(CC) $(CFLAGS) $(SHLIBLDFLAGS) -o $@ $(GAME_OBJS)
 
-$(BUILDDIR)/game/g_ai.o :        $(GAME_DIR)/g_ai.c
+$(BUILDDIR)/baseq2/g_ai.o :        $(GAME_DIR)/g_ai.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_chase.o :     $(GAME_DIR)/g_chase.c
+$(BUILDDIR)/baseq2/g_chase.o :     $(GAME_DIR)/g_chase.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/p_client.o :    $(GAME_DIR)/p_client.c
+$(BUILDDIR)/baseq2/p_client.o :    $(GAME_DIR)/p_client.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_cmds.o :      $(GAME_DIR)/g_cmds.c
+$(BUILDDIR)/baseq2/g_cmds.o :      $(GAME_DIR)/g_cmds.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_svcmds.o :    $(GAME_DIR)/g_svcmds.c
+$(BUILDDIR)/baseq2/g_svcmds.o :    $(GAME_DIR)/g_svcmds.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_combat.o :    $(GAME_DIR)/g_combat.c
+$(BUILDDIR)/baseq2/g_combat.o :    $(GAME_DIR)/g_combat.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_func.o :      $(GAME_DIR)/g_func.c
+$(BUILDDIR)/baseq2/g_func.o :      $(GAME_DIR)/g_func.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_items.o :     $(GAME_DIR)/g_items.c
+$(BUILDDIR)/baseq2/g_items.o :     $(GAME_DIR)/g_items.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_main.o :      $(GAME_DIR)/g_main.c
+$(BUILDDIR)/baseq2/g_main.o :      $(GAME_DIR)/g_main.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_misc.o :      $(GAME_DIR)/g_misc.c
+$(BUILDDIR)/baseq2/g_misc.o :      $(GAME_DIR)/g_misc.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_monster.o :   $(GAME_DIR)/g_monster.c
+$(BUILDDIR)/baseq2/g_monster.o :   $(GAME_DIR)/g_monster.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_phys.o :      $(GAME_DIR)/g_phys.c
+$(BUILDDIR)/baseq2/g_phys.o :      $(GAME_DIR)/g_phys.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_save.o :      $(GAME_DIR)/g_save.c
+$(BUILDDIR)/baseq2/g_save.o :      $(GAME_DIR)/g_save.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_spawn.o :     $(GAME_DIR)/g_spawn.c
+$(BUILDDIR)/baseq2/g_spawn.o :     $(GAME_DIR)/g_spawn.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_target.o :    $(GAME_DIR)/g_target.c
+$(BUILDDIR)/baseq2/g_target.o :    $(GAME_DIR)/g_target.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_trigger.o :   $(GAME_DIR)/g_trigger.c
+$(BUILDDIR)/baseq2/g_trigger.o :   $(GAME_DIR)/g_trigger.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_turret.o :    $(GAME_DIR)/g_turret.c
+$(BUILDDIR)/baseq2/g_turret.o :    $(GAME_DIR)/g_turret.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_utils.o :     $(GAME_DIR)/g_utils.c
+$(BUILDDIR)/baseq2/g_utils.o :     $(GAME_DIR)/g_utils.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/g_weapon.o :    $(GAME_DIR)/g_weapon.c
+$(BUILDDIR)/baseq2/g_weapon.o :    $(GAME_DIR)/g_weapon.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_actor.o :     $(GAME_DIR)/m_actor.c
+$(BUILDDIR)/baseq2/m_actor.o :     $(GAME_DIR)/m_actor.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_berserk.o :   $(GAME_DIR)/m_berserk.c
+$(BUILDDIR)/baseq2/m_berserk.o :   $(GAME_DIR)/m_berserk.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_boss2.o :     $(GAME_DIR)/m_boss2.c
+$(BUILDDIR)/baseq2/m_boss2.o :     $(GAME_DIR)/m_boss2.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_boss3.o :     $(GAME_DIR)/m_boss3.c
+$(BUILDDIR)/baseq2/m_boss3.o :     $(GAME_DIR)/m_boss3.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_boss31.o :     $(GAME_DIR)/m_boss31.c
+$(BUILDDIR)/baseq2/m_boss31.o :     $(GAME_DIR)/m_boss31.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_boss32.o :     $(GAME_DIR)/m_boss32.c
+$(BUILDDIR)/baseq2/m_boss32.o :     $(GAME_DIR)/m_boss32.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_brain.o :     $(GAME_DIR)/m_brain.c
+$(BUILDDIR)/baseq2/m_brain.o :     $(GAME_DIR)/m_brain.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_chick.o :     $(GAME_DIR)/m_chick.c
+$(BUILDDIR)/baseq2/m_chick.o :     $(GAME_DIR)/m_chick.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_flipper.o :   $(GAME_DIR)/m_flipper.c
+$(BUILDDIR)/baseq2/m_flipper.o :   $(GAME_DIR)/m_flipper.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_float.o :     $(GAME_DIR)/m_float.c
+$(BUILDDIR)/baseq2/m_float.o :     $(GAME_DIR)/m_float.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_flyer.o :     $(GAME_DIR)/m_flyer.c
+$(BUILDDIR)/baseq2/m_flyer.o :     $(GAME_DIR)/m_flyer.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_gladiator.o : $(GAME_DIR)/m_gladiator.c
+$(BUILDDIR)/baseq2/m_gladiator.o : $(GAME_DIR)/m_gladiator.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_gunner.o :    $(GAME_DIR)/m_gunner.c
+$(BUILDDIR)/baseq2/m_gunner.o :    $(GAME_DIR)/m_gunner.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_hover.o :     $(GAME_DIR)/m_hover.c
+$(BUILDDIR)/baseq2/m_hover.o :     $(GAME_DIR)/m_hover.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_infantry.o :  $(GAME_DIR)/m_infantry.c
+$(BUILDDIR)/baseq2/m_infantry.o :  $(GAME_DIR)/m_infantry.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_insane.o :    $(GAME_DIR)/m_insane.c
+$(BUILDDIR)/baseq2/m_insane.o :    $(GAME_DIR)/m_insane.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_medic.o :     $(GAME_DIR)/m_medic.c
+$(BUILDDIR)/baseq2/m_medic.o :     $(GAME_DIR)/m_medic.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_move.o :      $(GAME_DIR)/m_move.c
+$(BUILDDIR)/baseq2/m_move.o :      $(GAME_DIR)/m_move.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_mutant.o :    $(GAME_DIR)/m_mutant.c
+$(BUILDDIR)/baseq2/m_mutant.o :    $(GAME_DIR)/m_mutant.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_parasite.o :  $(GAME_DIR)/m_parasite.c
+$(BUILDDIR)/baseq2/m_parasite.o :  $(GAME_DIR)/m_parasite.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_soldier.o :   $(GAME_DIR)/m_soldier.c
+$(BUILDDIR)/baseq2/m_soldier.o :   $(GAME_DIR)/m_soldier.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_supertank.o : $(GAME_DIR)/m_supertank.c
+$(BUILDDIR)/baseq2/m_supertank.o : $(GAME_DIR)/m_supertank.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_tank.o :      $(GAME_DIR)/m_tank.c
+$(BUILDDIR)/baseq2/m_tank.o :      $(GAME_DIR)/m_tank.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/p_hud.o :       $(GAME_DIR)/p_hud.c
+$(BUILDDIR)/baseq2/p_hud.o :       $(GAME_DIR)/p_hud.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/p_trail.o :     $(GAME_DIR)/p_trail.c
+$(BUILDDIR)/baseq2/p_trail.o :     $(GAME_DIR)/p_trail.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/p_view.o :      $(GAME_DIR)/p_view.c
+$(BUILDDIR)/baseq2/p_view.o :      $(GAME_DIR)/p_view.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/p_weapon.o :    $(GAME_DIR)/p_weapon.c
+$(BUILDDIR)/baseq2/p_weapon.o :    $(GAME_DIR)/p_weapon.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/q_shared.o :    $(GAME_DIR)/q_shared.c
+$(BUILDDIR)/baseq2/q_shared.o :    $(GAME_DIR)/q_shared.c
 	$(DO_SHLIB_CC)
 
-$(BUILDDIR)/game/m_flash.o :     $(GAME_DIR)/m_flash.c
+$(BUILDDIR)/baseq2/m_flash.o :     $(GAME_DIR)/m_flash.c
 	$(DO_SHLIB_CC)
 
 #############################################################################
