@@ -38,7 +38,7 @@ static const ref_t possible_refs[NUMBER_OF_REFS] =
 {
 	{ "[software]",		"soft",    &REF_SOFT    },
 	{ "[software X11]",	"softx",   &REF_SOFTX11 },
-	{ "[software sdl]",	"softsdl", &REF_SOFTSDL },
+	{ "[software SDL]",	"softsdl", &REF_SOFTSDL },
 	{ "[OpenGL GLX]",	"glx",     &REF_GLX     },
 	{ "[SDL OpenGL]",	"sdlgl",   &REF_SDLGL   }
 };
@@ -53,6 +53,7 @@ extern cvar_t *vid_gamma;
 extern cvar_t *scr_viewsize;
 extern cvar_t *cl_vid_vsync;
 extern cvar_t *cl_drawfps; // FPS hack
+extern cvar_t *cl_drawclock;
 
 static cvar_t *gl_mode;
 static cvar_t *gl_driver;
@@ -91,6 +92,7 @@ static menulist_s  		s_fs_box[2];
 static menulist_s  		s_stipple_box;
 static menulist_s  		s_vid_vsync;
 static menulist_s  		s_draw_fps;
+static menulist_s  		s_draw_clock;
 static menulist_s  		s_paletted_texture_box;
 static menulist_s  		s_windowed_mouse;
 static menuaction_s		s_apply_action[2];
@@ -166,6 +168,7 @@ static void ApplyChanges( void *unused )
 	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
 	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
 	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
+	Cvar_SetValue( "cl_drawclock", s_draw_clock.curvalue );
 	Cvar_SetValue( "gl_picmip", 3 - s_tq_slider.curvalue );
 	Cvar_SetValue( "vid_fullscreen", s_fs_box[s_current_menu_index].curvalue );
 	Cvar_SetValue( "gl_ext_palettedtexture", s_paletted_texture_box.curvalue );
@@ -340,6 +343,9 @@ void VID_MenuInit( void )
 	if ( !cl_drawfps )
 		cl_drawfps = Cvar_Get( "cl_drawfps", "0", CVAR_ARCHIVE );
 
+	if ( !cl_drawclock )
+		cl_drawclock = Cvar_Get( "cl_drawclock", "0", CVAR_ARCHIVE );
+
 	if ( !_windowed_mouse)
 		_windowed_mouse = Cvar_Get( "_windowed_mouse", "0", CVAR_ARCHIVE );
 
@@ -422,8 +428,8 @@ void VID_MenuInit( void )
 		s_screensize_slider[i].generic.x		= 0;
 		s_screensize_slider[i].generic.y		= 20;
 		s_screensize_slider[i].generic.name	= "screen size";
-		s_screensize_slider[i].minvalue = 3;
-		s_screensize_slider[i].maxvalue = 12;
+		s_screensize_slider[i].minvalue = 1;
+		s_screensize_slider[i].maxvalue = 10;
 		s_screensize_slider[i].generic.callback = ScreenSizeCallback;
 
 		s_brightness_slider[i].generic.type	= MTYPE_SLIDER;
@@ -476,6 +482,13 @@ void VID_MenuInit( void )
 	s_draw_fps.curvalue = cl_drawfps->value;
 	s_draw_fps.itemnames = yesno_names;
 
+	s_draw_clock.generic.type = MTYPE_SPINCONTROL;
+	s_draw_clock.generic.x	= 0;
+	s_draw_clock.generic.y	= 70;
+	s_draw_clock.generic.name	= "show clock";
+	s_draw_clock.curvalue = cl_drawclock->value;
+	s_draw_clock.itemnames = yesno_names;
+
 	s_windowed_mouse.generic.type = MTYPE_SPINCONTROL;
 	s_windowed_mouse.generic.x  = 0;
 	s_windowed_mouse.generic.y  = 72;
@@ -512,6 +525,7 @@ void VID_MenuInit( void )
 	Menu_AddItem( &s_software_menu, ( void * ) &s_stipple_box );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_vsync );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_fps );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_clock );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_windowed_mouse );
 
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_ref_list[OPENGL_MENU] );
