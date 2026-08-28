@@ -199,8 +199,8 @@ void RW_IN_InitJoystick() {
     cl_upspeed = ri.Cvar_Get ("cl_upspeed", "200", 0);
     cl_forwardspeed = ri.Cvar_Get ("cl_forwardspeed", "200", 0);
     cl_sidespeed = ri.Cvar_Get ("cl_sidespeed", "200", 0);
-    cl_yawspeed = ri.Cvar_Get ("cl_yawspeed", "200", 0);
-    cl_pitchspeed = ri.Cvar_Get ("cl_pitchspeed", "150", 0);
+    cl_yawspeed = ri.Cvar_Get ("cl_yawspeed", "140", CVAR_ARCHIVE);
+    cl_pitchspeed = ri.Cvar_Get ("cl_pitchspeed", "140", CVAR_ARCHIVE);
     
     cl_run = ri.Cvar_Get ("cl_run", "0", CVAR_ARCHIVE);
 
@@ -251,11 +251,11 @@ void RW_IN_JoystickMove(usercmd_t *cmd, qboolean mlooking,
       if (fabs(jforward) > joy_pitchthreshold->value) {
 	if (m_pitch->value < 0.0) {
 	  in_state->viewangles[PITCH] -= 
-	    jforward*joy_pitchsensitivity->value*aspeed*cl_pitchspeed->value;
+	    jforward*joy_pitchsensitivity->value*aspeed*150;
 	}
 	else {
 	  in_state->viewangles[PITCH] += 
-	    jforward*joy_pitchsensitivity->value*aspeed*cl_pitchspeed->value;
+	    jforward*joy_pitchsensitivity->value*aspeed*150;
 	}
       }
     }
@@ -286,7 +286,7 @@ void RW_IN_JoystickMove(usercmd_t *cmd, qboolean mlooking,
       // user wants turn control to be turn control
       if (fabs(jturn) > joy_yawthreshold->value) {
 	in_state->viewangles[YAW] += 
-	(jturn*-(sensitivity->value/4.f))*aspeed*cl_yawspeed->value;
+	(jturn*-(sensitivity->value/4.f))*aspeed*140;
       }
     }
     
@@ -294,7 +294,7 @@ void RW_IN_JoystickMove(usercmd_t *cmd, qboolean mlooking,
       if (fabs(jlook) > joy_pitchthreshold->value) {
 	// pitch movement detected and pitch movement desired by user
 	in_state->viewangles[PITCH] += 
-	  (jlook*-(sensitivity->value/4.f)) * ((m_pitch->value > 0) ? -1 : 1) * aspeed*cl_pitchspeed->value;
+	  (jlook*-(sensitivity->value/4.f)) * ((m_pitch->value > 0) ? -1 : 1) * aspeed*150;
       }
       //}
 

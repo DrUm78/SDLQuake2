@@ -1045,6 +1045,7 @@ static menuframework_s	s_options_menu;
 static menuaction_s		s_options_defaults_action;
 static menuaction_s		s_options_customize_options_action;
 static menuslider_s		s_options_sensitivity_slider;
+static menuslider_s		s_options_dpad_sensitivity_slider;
 static menulist_s		s_options_freelook_box;
 static menulist_s		s_options_noalttab_box;
 static menulist_s		s_options_alwaysrun_box;
@@ -1090,6 +1091,12 @@ static void MouseSpeedFunc( void *unused )
 	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 2.0F );
 }
 
+static void DpadSpeedFunc( void *unused )
+{
+	Cvar_SetValue( "cl_yawspeed", 20.0F + s_options_dpad_sensitivity_slider.curvalue * 20.0F );
+	Cvar_SetValue( "cl_pitchspeed", 20.0F + s_options_dpad_sensitivity_slider.curvalue * 20.0F );
+}
+
 #if 0
 static void NoAltTabFunc( void *unused )
 {
@@ -1107,12 +1114,17 @@ static float ClampCvar( float min, float max, float value )
 static void ControlsSetMenuItemValues( void )
 {
 	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
+
 	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
-	
+
 	s_options_cdshuffle_box.curvalue		= Cvar_VariableValue("cd_shuffle");
 
 	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
+
 	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 2;
+
+	s_options_dpad_sensitivity_slider.curvalue	= ( cl_yawspeed->value - 20.0F ) / 20.0F;
+	s_options_dpad_sensitivity_slider.curvalue	= ( cl_pitchspeed->value - 20.0F ) / 20.0F;
 
 	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
 	s_options_alwaysrun_box.curvalue		= cl_run->value;
@@ -1300,7 +1312,7 @@ void Options_MenuInit( void )
 	s_options_cdvolume_box.generic.type	= MTYPE_SPINCONTROL;
 	s_options_cdvolume_box.generic.x		= 0;
 	s_options_cdvolume_box.generic.y		= 10;
-	s_options_cdvolume_box.generic.name	= "mp3 music";
+	s_options_cdvolume_box.generic.name	= "CD music";
 	s_options_cdvolume_box.generic.callback	= UpdateCDVolumeFunc;
 	s_options_cdvolume_box.itemnames		= cd_music_items;
 	s_options_cdvolume_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
@@ -1308,7 +1320,7 @@ void Options_MenuInit( void )
 	s_options_cdshuffle_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_cdshuffle_box.generic.x = 0;
 	s_options_cdshuffle_box.generic.y = 20;
-	s_options_cdshuffle_box.generic.name = "mp3 shuffle";
+	s_options_cdshuffle_box.generic.name = "CD shuffle";
 	s_options_cdshuffle_box.generic.callback = CDShuffleFunc;
 	s_options_cdshuffle_box.itemnames = cd_shuffle;
 	s_options_cdshuffle_box.curvalue = Cvar_VariableValue("cd_shuffle");
@@ -1337,44 +1349,52 @@ void Options_MenuInit( void )
 	s_options_sensitivity_slider.minvalue		= 2;
 	s_options_sensitivity_slider.maxvalue		= 22;
 
+	s_options_dpad_sensitivity_slider.generic.type	= MTYPE_SLIDER;
+	s_options_dpad_sensitivity_slider.generic.x		= 0;
+	s_options_dpad_sensitivity_slider.generic.y		= 50;
+	s_options_dpad_sensitivity_slider.generic.name	= "D-pad speed";
+	s_options_dpad_sensitivity_slider.generic.callback = DpadSpeedFunc;
+	s_options_dpad_sensitivity_slider.minvalue		= 1;
+	s_options_dpad_sensitivity_slider.maxvalue		= 14;
+
 	s_options_alwaysrun_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_alwaysrun_box.generic.x	= 0;
-	s_options_alwaysrun_box.generic.y	= 50;
+	s_options_alwaysrun_box.generic.y	= 60;
 	s_options_alwaysrun_box.generic.name	= "always run";
 	s_options_alwaysrun_box.generic.callback = AlwaysRunFunc;
 	s_options_alwaysrun_box.itemnames = yesno_names;
 
 	s_options_invertmouse_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_invertmouse_box.generic.x	= 0;
-	s_options_invertmouse_box.generic.y	= 60;
+	s_options_invertmouse_box.generic.y	= 70;
 	s_options_invertmouse_box.generic.name	= "invert analog";
 	s_options_invertmouse_box.generic.callback = InvertMouseFunc;
 	s_options_invertmouse_box.itemnames = yesno_names;
 
 	s_options_lookspring_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookspring_box.generic.x	= 0;
-	s_options_lookspring_box.generic.y	= 70;
+	s_options_lookspring_box.generic.y	= 80;
 	s_options_lookspring_box.generic.name	= "lookspring";
 	s_options_lookspring_box.generic.callback = LookspringFunc;
 	s_options_lookspring_box.itemnames = yesno_names;
 
 	s_options_lookstrafe_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookstrafe_box.generic.x	= 0;
-	s_options_lookstrafe_box.generic.y	= 80;
+	s_options_lookstrafe_box.generic.y	= 90;
 	s_options_lookstrafe_box.generic.name	= "lookstrafe";
 	s_options_lookstrafe_box.generic.callback = LookstrafeFunc;
 	s_options_lookstrafe_box.itemnames = yesno_names;
 
 	s_options_freelook_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_freelook_box.generic.x	= 0;
-	s_options_freelook_box.generic.y	= 90;
+	s_options_freelook_box.generic.y	= 100;
 	s_options_freelook_box.generic.name	= "free look";
 	s_options_freelook_box.generic.callback = FreeLookFunc;
 	s_options_freelook_box.itemnames = yesno_names;
 
 	s_options_crosshair_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_crosshair_box.generic.x	= 0;
-	s_options_crosshair_box.generic.y	= 100;
+	s_options_crosshair_box.generic.y	= 110;
 	s_options_crosshair_box.generic.name	= "crosshair";
 	s_options_crosshair_box.generic.callback = CrosshairFunc;
 	s_options_crosshair_box.itemnames = crosshair_names;
@@ -1419,6 +1439,7 @@ void Options_MenuInit( void )
 	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
 	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
+	Menu_AddItem( &s_options_menu, ( void * ) &s_options_dpad_sensitivity_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
@@ -4097,5 +4118,3 @@ void M_Keydown (int key)
 		if ( ( s = m_keyfunc( key ) ) != 0 )
 			S_StartLocalSound( ( char * ) s );
 }
-
-
