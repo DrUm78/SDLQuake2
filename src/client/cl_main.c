@@ -46,6 +46,7 @@ cvar_t	*cl_timeout;
 cvar_t	*cl_predict;
 //cvar_t	*cl_minfps;
 cvar_t	*cl_maxfps;
+cvar_t	*cl_vid_vsync;
 cvar_t	*cl_drawfps;
 cvar_t	*cl_gun;
 #ifdef QMAX
@@ -1465,11 +1466,12 @@ void CL_InitLocal (void)
 #else
 	cl_maxfps = Cvar_Get ("cl_maxfps", "90", 0);
 #endif
+	cl_vid_vsync = Cvar_Get ("vid_vsync", "0", CVAR_ARCHIVE);
 	cl_drawfps = Cvar_Get("cl_drawfps","0",CVAR_ARCHIVE); // FPS hack
 
 #ifdef QMAX
 	cl_blood = Cvar_Get ("cl_blood", "1", 0);
-	
+
 	//psychospaz -- railgun fun
 	cl_railred = Cvar_Get ("cl_railred", "20", CVAR_ARCHIVE);
 	cl_railgreen = Cvar_Get ("cl_railgreen", "50", CVAR_ARCHIVE);
@@ -1738,8 +1740,15 @@ void CL_Frame (int msec)
 	{
 		if (cls.state == ca_connected && extratime < 100)
 			return;			// don't flood packets out while connecting
-		if (extratime < 1000/cl_maxfps->value)
-			return;			// framerate is too high
+
+		// If hardware VSync is enabled, it dictates the rendering pace —
+		// the software throttle `cl_maxfps` becomes unnecessary and can even
+		// cause a beating effect with the VSync clock
+		if (cl_vid_vsync->value != 1)
+		{
+			if (extratime < 1000/cl_maxfps->value)
+				return;			// framerate is too high
+		}
 	}
 
 	// let the mouse activate or deactivate

@@ -21,6 +21,10 @@
 
 #include "SDL.h"
 
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/fb.h>
+
 #ifdef OPENGL
 #include <GL/gl.h>
 #endif
@@ -47,6 +51,11 @@ qboolean have_stencil = false;
 
 static SDL_Surface *surface;
 
+static int fbdev_fd = -1;
+static qboolean vsync_available = false;
+
+extern cvar_t *cl_vid_vsync;
+
 #ifndef OPENGL
 static unsigned int sdl_palettemode;
 #endif
@@ -67,7 +76,7 @@ int config_notify_height;
 glwstate_t glw_state;
 static cvar_t *use_stencil;
 #endif
-						      
+
 // Console variables that we need to access from this module
 
 /*****************************************************************************/
@@ -174,7 +183,7 @@ void RW_IN_Activate(qboolean active)
     IN_ActivateMouse();
   else
     IN_DeactivateMouse();
-#endif		
+#endif
 }
 
 /*****************************************************************************/
@@ -278,7 +287,7 @@ int XLateKey(unsigned int keysym)
     break;
   }
   
-  return key;		
+  return key;
 }
 
 static unsigned char KeyStates[SDLK_LAST];
@@ -296,7 +305,7 @@ void doneMouse() {
 void GetEvent(SDL_Event *event)
 {
 	unsigned int key;
-	
+
 	switch(event->type) {
 	case SDL_MOUSEBUTTONDOWN:
 	  if (event->button.button == 4) {
@@ -337,21 +346,21 @@ void GetEvent(SDL_Event *event)
 	  if ( (KeyStates[SDLK_LALT] || KeyStates[SDLK_RALT]) &&
 	       (event->key.keysym.sym == SDLK_RETURN) ) {
 	    cvar_t *fullscreen;
-	    
+
 	    SDL_WM_ToggleFullScreen(surface);
-	    
+
 	    if (surface->flags & SDL_FULLSCREEN) {
 	      ri.Cvar_SetValue( "vid_fullscreen", 1 );
 	    } else {
 	      ri.Cvar_SetValue( "vid_fullscreen", 0 );
 	    }
-	    
+
 	    fullscreen = ri.Cvar_Get( "vid_fullscreen", "0", 0 );
 	    fullscreen->modified = false; /* we just changed it with SDL. */
-	    
+
 	    break; /* ignore this key */
 	  }
-	  
+
 	  if ( (KeyStates[SDLK_LCTRL] || KeyStates[SDLK_RCTRL]) &&
 	       (event->key.keysym.sym == SDLK_g) ) {
 	    SDL_GrabMode gm = SDL_WM_GrabInput(SDL_GRAB_QUERY);
@@ -360,12 +369,12 @@ void GetEvent(SDL_Event *event)
 	      gm = SDL_WM_GrabInput(SDL_GRAB_QUERY);
 	    */	
 	    ri.Cvar_SetValue( "_windowed_mouse", (gm == SDL_GRAB_ON) ? /*1*/ 0 : /*0*/ 1 );
-	    
+
 	    break; /* ignore this key */
 	  }
-	  
+
 	  KeyStates[event->key.keysym.sym] = 1;
-	  
+
 	  key = XLateKey(event->key.keysym.sym);
 	  if (key) {
 	    keyq[keyq_head].key = key;
@@ -537,12 +546,12 @@ static qboolean SWimp_InitGraphics( qboolean fullscreen )
 		int isfullscreen = (surface->flags & SDL_FULLSCREEN) ? 1 : 0;
 		if (fullscreen != isfullscreen)
 			SDL_WM_ToggleFullScreen(surface);
-	
+
 		isfullscreen = (surface->flags & SDL_FULLSCREEN) ? 1 : 0;
 		if (fullscreen == isfullscreen)
 			return true;
 	}
-	
+
 	srandom(getpid());
 
 	// free resources in use
@@ -552,11 +561,11 @@ static qboolean SWimp_InitGraphics( qboolean fullscreen )
 	// let the sound and input subsystems know about the new window
 	ri.Vid_NewWindow (vid.width, vid.height);
 
-/* 
+/*
 	Okay, I am going to query SDL for the "best" pixel format.
 	If the depth is not 8, use SetPalette with logical pal, 
 	else use SetColors.
-	
+
 	Hopefully this works all the time.
 */
 	vinfo = SDL_GetVideoInfo();
@@ -564,14 +573,30 @@ static qboolean SWimp_InitGraphics( qboolean fullscreen )
 	flags = /*SDL_DOUBLEBUF|*/SDL_SWSURFACE|SDL_HWPALETTE;
 	if (fullscreen)
 		flags |= SDL_FULLSCREEN;
-	
+
 	SetSDLIcon(); /* currently uses q2icon.xbm data */
-	
+
 	if ((surface = SDL_SetVideoMode(vid.width, vid.height, 8, flags)) == NULL) {
 		Sys_Error("(SOFTSDL) SDL SetVideoMode failed: %s\n", SDL_GetError());
 		return false;
 	}
-	
+
+	if (fbdev_fd < 0) {
+		fbdev_fd = open("/dev/fb0", O_RDONLY);
+		if (fbdev_fd >= 0) {
+			__u32 dummy = 0;
+			/* test whether the ioctl is actually supported by this fb driver */
+			if (ioctl(fbdev_fd, FBIO_WAITFORVSYNC, &dummy) == 0) {
+				vsync_available = true;
+				ri.Con_Printf(PRINT_ALL, "vsync: FBIO_WAITFORVSYNC available\n");
+			} else {
+				ri.Con_Printf(PRINT_ALL, "vsync: FBIO_WAITFORVSYNC unavailable (%s)\n", strerror(errno));
+				close(fbdev_fd);
+				fbdev_fd = -1;
+			}
+		}
+	}
+
 	SDL_WM_SetCaption("Quake II", "Quake II");
 
 	SDL_ShowCursor(0);
@@ -581,15 +606,13 @@ static qboolean SWimp_InitGraphics( qboolean fullscreen )
 
 	X11_active = true;
 
-	
-
 	return true;
 }
 #else
 static qboolean GLimp_InitGraphics( qboolean fullscreen )
 {
 	int flags;
-	
+
 	/* Just toggle fullscreen if that's all that has been changed */
 	if (surface && (surface->w == vid.width) && (surface->h == vid.height)) {
 		int isfullscreen = (surface->flags & SDL_FULLSCREEN) ? 1 : 0;
@@ -600,7 +623,7 @@ static qboolean GLimp_InitGraphics( qboolean fullscreen )
 		if (fullscreen == isfullscreen)
 			return true;
 	}
-	
+
 	srandom(getpid());
 
 	// free resources in use
@@ -615,16 +638,16 @@ static qboolean GLimp_InitGraphics( qboolean fullscreen )
 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	
+
 	if (use_stencil) 
 	  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
-	
+
 	flags = SDL_OPENGL;
 	if (fullscreen)
 		flags |= SDL_FULLSCREEN;
-	
+
 	SetSDLIcon(); /* currently uses q2icon.xbm data */
-	
+
 	if ((surface = SDL_SetVideoMode(vid.width, vid.height, 0, flags)) == NULL) {
 		Sys_Error("(SDLGL) SDL SetVideoMode failed: %s\n", SDL_GetError());
 		return false;
@@ -633,9 +656,9 @@ static qboolean GLimp_InitGraphics( qboolean fullscreen )
 	// stencilbuffer shadows
  	if (use_stencil) {
 	  int stencil_bits;
-	  
+
 	  have_stencil = false;
-	  
+
 	  if (!SDL_GL_GetAttribute(SDL_GL_STENCIL_SIZE, &stencil_bits)) {
 	    ri.Con_Printf(PRINT_ALL, "I: got %d bits of stencil\n", 
 			  stencil_bits);
@@ -670,8 +693,40 @@ void GLimp_BeginFrame( float camera_seperation )
 */
 
 #ifndef OPENGL
+static unsigned int last_blit_time = 0;
+
+#define VSYNC_PERIOD_MS   16    /* ~60Hz */
+#define VSYNC_ADAPT_SLACK 8     /* margin of tolerance before considering that we are "late" */
+
 void SWimp_EndFrame (void)
 {
+	if (vsync_available && cl_vid_vsync->value > 0)
+	{
+		qboolean do_wait = true;
+
+		if (cl_vid_vsync->value == 2)   /* adaptive mode */
+		{
+			unsigned int now = Sys_Milliseconds();
+			unsigned int elapsed = now - last_blit_time;
+
+			/* The previous frame + game logic have already taken
+			   more than one VSync period (+ margin): we are running late;
+			   waiting for the *next* VSync on top of that is pointless—
+			   we prefer a bit of tearing over a framerate drop. */
+
+			if (elapsed >= VSYNC_PERIOD_MS + VSYNC_ADAPT_SLACK)
+				do_wait = false;
+		}
+
+		if (do_wait)
+		{
+			__u32 arg = 0;
+			ioctl(fbdev_fd, FBIO_WAITFORVSYNC, &arg);
+		}
+
+		last_blit_time = Sys_Milliseconds();
+	}
+
 	/* SDL_Flip(surface); */
 	SDL_UpdateRect(surface, 0, 0, 0, 0);
 }
@@ -742,7 +797,7 @@ int GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 void SWimp_SetPalette( const unsigned char *palette )
 {
 	SDL_Color colors[256];
-	
+
 	int i;
 
 	if (!X11_active)
@@ -770,10 +825,16 @@ void SWimp_SetPalette( const unsigned char *palette )
 
 void SWimp_Shutdown( void )
 {
+	if (fbdev_fd >= 0) {
+		close(fbdev_fd);
+		fbdev_fd = -1;
+		vsync_available = false;
+	}
+
 	if (surface)
 		SDL_FreeSurface(surface);
 	surface = NULL;
-	
+
 	if (SDL_WasInit(SDL_INIT_EVERYTHING) == SDL_INIT_VIDEO)
 		SDL_Quit();
 	else
@@ -877,7 +938,7 @@ void KBD_Update(void)
       
       if (old_windowed_mouse != _windowed_mouse->value) {
 	old_windowed_mouse = _windowed_mouse->value;
-	
+
 	if (!_windowed_mouse->value) {
 	  /* ungrab the pointer */
 	  SDL_WM_GrabInput(SDL_GRAB_OFF);
@@ -900,7 +961,7 @@ void KBD_Close(void)
 {
 	keyq_head = 0;
 	keyq_tail = 0;
-	
+
 	memset(keyq, 0, sizeof(keyq));
 }
 

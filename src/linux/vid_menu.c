@@ -36,11 +36,11 @@ typedef struct
 
 static const ref_t possible_refs[NUMBER_OF_REFS] =
 {
-	{ "[software      ]", "soft",    &REF_SOFT    },
-	{ "[software X11  ]", "softx",   &REF_SOFTX11 },
-	{ "[software SDL  ]", "softsdl", &REF_SOFTSDL },
-	{ "[OpenGL GLX    ]", "glx",     &REF_GLX     },
-	{ "[SDL OpenGL    ]", "sdlgl",   &REF_SDLGL   }
+	{ "[software]",		"soft",    &REF_SOFT    },
+	{ "[software X11]",	"softx",   &REF_SOFTX11 },
+	{ "[software sdl]",	"softsdl", &REF_SOFTSDL },
+	{ "[OpenGL GLX]",	"glx",     &REF_GLX     },
+	{ "[SDL OpenGL]",	"sdlgl",   &REF_SDLGL   }
 };
 
 /*
@@ -51,6 +51,7 @@ extern cvar_t *vid_ref;
 extern cvar_t *vid_fullscreen;
 extern cvar_t *vid_gamma;
 extern cvar_t *scr_viewsize;
+extern cvar_t *cl_vid_vsync;
 extern cvar_t *cl_drawfps; // FPS hack
 
 static cvar_t *gl_mode;
@@ -88,6 +89,7 @@ static menuslider_s		s_screensize_slider[2];
 static menuslider_s		s_brightness_slider[2];
 static menulist_s  		s_fs_box[2];
 static menulist_s  		s_stipple_box;
+static menulist_s  		s_vid_vsync;
 static menulist_s  		s_draw_fps;
 static menulist_s  		s_paletted_texture_box;
 static menulist_s  		s_windowed_mouse;
@@ -162,6 +164,7 @@ static void ApplyChanges( void *unused )
 
 	Cvar_SetValue( "vid_gamma", gamma );
 	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
+	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
 	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
 	Cvar_SetValue( "gl_picmip", 3 - s_tq_slider.curvalue );
 	Cvar_SetValue( "vid_fullscreen", s_fs_box[s_current_menu_index].curvalue );
@@ -272,6 +275,14 @@ void VID_MenuInit( void )
 		0
 	};
 
+	static const char *vsync_names[] =
+	{
+		"disabled",
+		"enabled",
+		//"adaptive",
+		0
+	};
+
 	/* make sure these are invalided before showing the menu again */
 	REF_SOFT    = NUMBER_OF_REFS;
 	REF_SOFTX11 = NUMBER_OF_REFS;
@@ -322,6 +333,9 @@ void VID_MenuInit( void )
 
 	if ( !sw_stipplealpha )
 		sw_stipplealpha = Cvar_Get( "sw_stipplealpha", "0", CVAR_ARCHIVE );
+
+	if ( !cl_vid_vsync )
+		cl_vid_vsync = Cvar_Get( "vid_vsync", "0", CVAR_ARCHIVE );
 
 	if ( !cl_drawfps )
 		cl_drawfps = Cvar_Get( "cl_drawfps", "0", CVAR_ARCHIVE );
@@ -443,15 +457,21 @@ void VID_MenuInit( void )
 
 	s_stipple_box.generic.type = MTYPE_SPINCONTROL;
 	s_stipple_box.generic.x	= 0;
-	//s_stipple_box.generic.y	= 60;
 	s_stipple_box.generic.y	= 40;
 	s_stipple_box.generic.name	= "stipple alpha";
 	s_stipple_box.curvalue = sw_stipplealpha->value;
 	s_stipple_box.itemnames = yesno_names;
 
+	s_vid_vsync.generic.type = MTYPE_SPINCONTROL;
+	s_vid_vsync.generic.x	= 0;
+	s_vid_vsync.generic.y	= 50;
+	s_vid_vsync.generic.name	= "vertical sync";
+	s_vid_vsync.curvalue = cl_vid_vsync->value;
+	s_vid_vsync.itemnames = vsync_names;
+
 	s_draw_fps.generic.type = MTYPE_SPINCONTROL;
 	s_draw_fps.generic.x	= 0;
-	s_draw_fps.generic.y	= 50;
+	s_draw_fps.generic.y	= 60;
 	s_draw_fps.generic.name	= "show fps";
 	s_draw_fps.curvalue = cl_drawfps->value;
 	s_draw_fps.itemnames = yesno_names;
@@ -490,6 +510,7 @@ void VID_MenuInit( void )
 	Menu_AddItem( &s_software_menu, ( void * ) &s_brightness_slider[SOFTWARE_MENU] );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_fs_box[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_stipple_box );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_vsync );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_fps );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_windowed_mouse );
 
