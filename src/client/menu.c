@@ -1311,11 +1311,11 @@ void Options_MenuInit( void )
 	s_options_cdshuffle_box.generic.name = "mp3 shuffle";
 	s_options_cdshuffle_box.generic.callback = CDShuffleFunc;
 	s_options_cdshuffle_box.itemnames = cd_shuffle;
-	s_options_cdshuffle_box.curvalue = Cvar_VariableValue("cd_shuffle");;
+	s_options_cdshuffle_box.curvalue = Cvar_VariableValue("cd_shuffle");
 
 	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_quality_list.generic.x		= 0;
-	s_options_quality_list.generic.y		= 30;;
+	s_options_quality_list.generic.y		= 30;
 	s_options_quality_list.generic.name		= "sound quality";
 	s_options_quality_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_quality_list.itemnames		= quality_items;

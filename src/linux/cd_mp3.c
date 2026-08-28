@@ -287,9 +287,6 @@ void CDAudio_MixSamples(byte *stream, int len)
 	if (!enabled || !playing || paused || !mp3Valid)
 		return;
 
-	/* This mixer only handles 16-bit destination audio (the only
-	   format drmp3_read_pcm_frames_s16 produces); if the game runs in
-	   8-bit mode we simply don't mix any music. */
 	if (dma.samplebits != 16)
 		return;
 
@@ -309,40 +306,11 @@ void CDAudio_MixSamples(byte *stream, int len)
 		float outSample[2];
 		int c;
 
-		if (mp3rs.avail - (int) mp3rs.pos < 2 && !mp3rs.eof)
-			MP3_Refill();
-
 		srcFrame = (int) mp3rs.pos;
 
 		if (srcFrame + 1 >= mp3rs.avail)
 		{
-			/* ran out of buffered data mid-callback: either it's a
-			   genuine end of (non-looping) track, or looping just
-			   wrapped and needs one more refill to have 2 frames
-			   available for interpolation. */
-			if (mp3rs.eof)
-			{
-				if (playLooping)
-				{
-					drmp3_seek_to_pcm_frame(&mp3, 0);
-					mp3rs.avail = 0;
-					mp3rs.pos   = 0.0f;
-					mp3rs.eof   = false;
-					MP3_Refill();
-					srcFrame = (int) mp3rs.pos;
-					if (srcFrame + 1 >= mp3rs.avail)
-						break; /* still nothing - leave the rest of stream as FX-only */
-				}
-				else
-				{
-					playing = false;
-					break;
-				}
-			}
-			else
-			{
-				break; /* decoder starved this callback, try again next time */
-			}
+			break;
 		}
 
 		frac = mp3rs.pos - (float) srcFrame;
@@ -491,11 +459,13 @@ void CDAudio_Update(void)
 		return;
 	}
 
-	/* If the track has finished and we're not looping, this would be
-	   the place to automatically move on to another track (the
-	   original "CD playlist" behavior): adapt this to whatever your
-	   game does when CDAudio_Play is never called again by the
-	   client code. */
+	if (playing && mp3Valid && !paused)
+	{
+		SDL_LockAudio();
+		if (mp3rs.avail - (int) mp3rs.pos < MP3_SRC_BUF_FRAMES / 4)
+			MP3_Refill();
+		SDL_UnlockAudio();
+	}
 }
 
 int CDAudio_Init(void)
