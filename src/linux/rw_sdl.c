@@ -54,7 +54,7 @@ static SDL_Surface *surface;
 static int fbdev_fd = -1;
 static qboolean vsync_available = false;
 
-extern cvar_t *cl_vid_vsync;
+extern cvar_t *vid_vsync;
 
 #ifndef OPENGL
 static unsigned int sdl_palettemode;
@@ -700,11 +700,11 @@ static unsigned int last_blit_time = 0;
 
 void SWimp_EndFrame (void)
 {
-	if (vsync_available && cl_vid_vsync->value > 0)
+	if (vsync_available && vid_vsync->value > 0)
 	{
 		qboolean do_wait = true;
 
-		if (cl_vid_vsync->value == 2)   /* adaptive mode */
+		if (vid_vsync->value == 2)   /* adaptive mode */
 		{
 			unsigned int now = Sys_Milliseconds();
 			unsigned int elapsed = now - last_blit_time;

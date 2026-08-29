@@ -444,18 +444,18 @@ void VID_Init (void)
 	if (getenv("DISPLAY"))
 		vid_ref = Cvar_Get ("vid_ref", "softx", CVAR_ARCHIVE);
 	else
-		vid_ref = Cvar_Get ("vid_ref", "soft", CVAR_ARCHIVE);
+	vid_ref = Cvar_Get ("vid_ref", "soft", CVAR_ARCHIVE);
 	vid_xpos = Cvar_Get ("vid_xpos", "3", CVAR_ARCHIVE);
 	vid_ypos = Cvar_Get ("vid_ypos", "22", CVAR_ARCHIVE);
 	vid_fullscreen = Cvar_Get ("vid_fullscreen", "0", CVAR_ARCHIVE);
-	vid_gamma = Cvar_Get( "vid_gamma", "1", CVAR_ARCHIVE );
+	vid_gamma = Cvar_Get( "vid_gamma", "0.700000", CVAR_ARCHIVE );
 
 	/* Add some console commands that we want to handle */
 	Cmd_AddCommand ("vid_restart", VID_Restart_f);
 
 	/* Disable the 3Dfx splash screen */
 	putenv("FX_GLIDE_NO_SPLASH=0");
-		
+
 	/* Start the graphics mode and load refresh DLL */
 	VID_CheckChanges();
 }
@@ -499,7 +499,7 @@ qboolean VID_CheckRefExists (const char *ref)
 
 	path = Cvar_Get ("libdir", DEFAULT_LIBDIR, CVAR_NOSET)->string;
 	snprintf (fn, MAX_OSPATH, "%s/ref_%s.so", path, ref );
-	
+
 	if (stat(fn, &st) == 0)
 		return true;
 	else {

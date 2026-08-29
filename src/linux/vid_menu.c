@@ -50,8 +50,8 @@ static const ref_t possible_refs[NUMBER_OF_REFS] =
 extern cvar_t *vid_ref;
 extern cvar_t *vid_fullscreen;
 extern cvar_t *vid_gamma;
+extern cvar_t *vid_vsync;
 extern cvar_t *scr_viewsize;
-extern cvar_t *cl_vid_vsync;
 extern cvar_t *cl_drawfps; // FPS hack
 extern cvar_t *cl_drawclock;
 
@@ -142,8 +142,35 @@ static void BrightnessCallback( void *s )
 	}
 }
 
+static void StippleAlphaCallback( void *unused )
+{
+	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
+}
+
+static void VsyncCallback( void *unused )
+{
+	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
+}
+
+static void DrawFPSCallback( void *unused )
+{
+	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
+}
+
+static void DrawClockCallback( void *unused )
+{
+	Cvar_SetValue( "cl_drawclock", s_draw_clock.curvalue );
+}
+
 static void ResetDefaults( void *unused )
 {
+	Cvar_SetValue( "viewsize", 100 );
+	Cvar_SetValue( "vid_gamma", 0.700000 );
+	Cvar_SetValue( "sw_stipplealpha", 0 );
+	Cvar_SetValue( "vid_vsync", 0 );
+	Cvar_SetValue( "cl_drawfps", 0 );
+	Cvar_SetValue( "cl_drawclock", 0 );
+
 	VID_MenuInit();
 }
 
@@ -337,8 +364,8 @@ void VID_MenuInit( void )
 	if ( !sw_stipplealpha )
 		sw_stipplealpha = Cvar_Get( "sw_stipplealpha", "0", CVAR_ARCHIVE );
 
-	if ( !cl_vid_vsync )
-		cl_vid_vsync = Cvar_Get( "vid_vsync", "0", CVAR_ARCHIVE );
+	if ( !vid_vsync )
+		vid_vsync = Cvar_Get( "vid_vsync", "0", CVAR_ARCHIVE );
 
 	if ( !cl_drawfps )
 		cl_drawfps = Cvar_Get( "cl_drawfps", "0", CVAR_ARCHIVE );
@@ -449,7 +476,7 @@ void VID_MenuInit( void )
 		s_fs_box[i].curvalue = vid_fullscreen->value;
 
 		s_defaults_action[i].generic.type = MTYPE_ACTION;
-		s_defaults_action[i].generic.name = "reset to default";
+		s_defaults_action[i].generic.name = "reset to defaults";
 		s_defaults_action[i].generic.x    = 0;
 		s_defaults_action[i].generic.y    = 90;
 		s_defaults_action[i].generic.callback = ResetDefaults;
@@ -465,6 +492,7 @@ void VID_MenuInit( void )
 	s_stipple_box.generic.x	= 0;
 	s_stipple_box.generic.y	= 40;
 	s_stipple_box.generic.name	= "stipple alpha";
+	s_stipple_box.generic.callback = StippleAlphaCallback;
 	s_stipple_box.curvalue = sw_stipplealpha->value;
 	s_stipple_box.itemnames = yesno_names;
 
@@ -472,13 +500,15 @@ void VID_MenuInit( void )
 	s_vid_vsync.generic.x	= 0;
 	s_vid_vsync.generic.y	= 50;
 	s_vid_vsync.generic.name	= "vertical sync";
-	s_vid_vsync.curvalue = cl_vid_vsync->value;
+	s_vid_vsync.generic.callback = VsyncCallback;
+	s_vid_vsync.curvalue = vid_vsync->value;
 	s_vid_vsync.itemnames = vsync_names;
 
 	s_draw_fps.generic.type = MTYPE_SPINCONTROL;
 	s_draw_fps.generic.x	= 0;
 	s_draw_fps.generic.y	= 60;
 	s_draw_fps.generic.name	= "show fps";
+	s_draw_fps.generic.callback = DrawFPSCallback;
 	s_draw_fps.curvalue = cl_drawfps->value;
 	s_draw_fps.itemnames = yesno_names;
 
@@ -486,6 +516,7 @@ void VID_MenuInit( void )
 	s_draw_clock.generic.x	= 0;
 	s_draw_clock.generic.y	= 70;
 	s_draw_clock.generic.name	= "show clock";
+	s_draw_clock.generic.callback = DrawClockCallback;
 	s_draw_clock.curvalue = cl_drawclock->value;
 	s_draw_clock.itemnames = yesno_names;
 
@@ -537,9 +568,9 @@ void VID_MenuInit( void )
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_paletted_texture_box );
 
 	Menu_AddItem( &s_software_menu, ( void * ) &s_defaults_action[SOFTWARE_MENU] );
-	Menu_AddItem( &s_software_menu, ( void * ) &s_apply_action[SOFTWARE_MENU] );
+	//Menu_AddItem( &s_software_menu, ( void * ) &s_apply_action[SOFTWARE_MENU] );
 	Menu_AddItem( &s_opengl_menu, ( void * ) &s_defaults_action[OPENGL_MENU] );
-	Menu_AddItem( &s_opengl_menu, ( void * ) &s_apply_action[OPENGL_MENU] );
+	//Menu_AddItem( &s_opengl_menu, ( void * ) &s_apply_action[OPENGL_MENU] );
 
 	Menu_Center( &s_software_menu );
 	Menu_Center( &s_opengl_menu );

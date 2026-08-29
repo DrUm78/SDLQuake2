@@ -337,6 +337,12 @@ void Menu_AdjustCursor( menuframework_s *m, int dir )
 	}
 }
 
+void Menu_MoveCursor( menuframework_s *m, int dir )
+{
+	m->cursor += dir;
+	Menu_AdjustCursor( m, dir );
+}
+
 void Menu_Center( menuframework_s *menu )
 {
 	int height;
@@ -347,10 +353,98 @@ void Menu_Center( menuframework_s *menu )
 	menu->y = ( VID_HEIGHT - height ) / 2;
 }
 
+#define SLIDER_AUTOFIRE_DELAY	350	/* ms delay before autofire starts */
+#define SLIDER_AUTOFIRE_RATE	80	/* ms between each step once autofire is active */
+
+static int s_slide_dir  = 0;
+static int s_slide_next = 0;
+
+static void Menu_UpdateAutoSlide( menuframework_s *menu )
+{
+	extern int keydown[];
+	menucommon_s *item;
+	int dir;
+
+	dir = 0;
+	if ( keydown[K_LEFTARROW] )
+		dir = -1;
+	else if ( keydown[K_RIGHTARROW] )
+		dir = 1;
+
+	item = ( menucommon_s * ) Menu_ItemAtCursor( menu );
+
+	if ( !dir || !item || ( item->type != MTYPE_SLIDER && item->type != MTYPE_SPINCONTROL ) )
+	{
+		s_slide_dir = 0;
+		return;
+	}
+
+	if ( dir != s_slide_dir )
+	{
+		/* new press: the initial keydown has already advanced the slider
+		   by one step via VID_MenuKey; we simply arm the repeat delay */
+		s_slide_dir  = dir;
+		s_slide_next = Sys_Milliseconds() + SLIDER_AUTOFIRE_DELAY;
+		return;
+	}
+
+	if ( Sys_Milliseconds() >= s_slide_next )
+	{
+		extern void M_Keydown( int key );
+
+		M_Keydown( dir < 0 ? K_LEFTARROW : K_RIGHTARROW );
+		s_slide_next = Sys_Milliseconds() + SLIDER_AUTOFIRE_RATE;
+	}
+}
+
+#define CURSOR_AUTOFIRE_DELAY	350	/* ms delay before autofire starts */
+#define CURSOR_AUTOFIRE_RATE	80	/* ms between each step once autofire is active */
+
+static int s_cursor_dir  = 0;
+static int s_cursor_next = 0;
+
+static void Menu_UpdateAutoCursor( menuframework_s *menu )
+{
+	extern int keydown[];
+	int dir;
+
+	dir = 0;
+	if ( keydown[K_UPARROW] )
+		dir = -1;
+	else if ( keydown[K_DOWNARROW] )
+		dir = 1;
+
+	if ( !dir )
+	{
+		s_cursor_dir = 0;
+		return;
+	}
+
+	if ( dir != s_cursor_dir )
+	{
+		/* new press: the initial keydown has already advanced the slider
+		   by one step via VID_MenuKey; we simply arm the repeat delay */
+		s_cursor_dir  = dir;
+		s_cursor_next = Sys_Milliseconds() + CURSOR_AUTOFIRE_DELAY;
+		return;
+	}
+
+	if ( Sys_Milliseconds() >= s_cursor_next )
+	{
+		extern void M_Keydown( int key );
+
+		M_Keydown( dir < 0 ? K_UPARROW : K_DOWNARROW );
+		s_cursor_next = Sys_Milliseconds() + CURSOR_AUTOFIRE_RATE;
+	}
+}
+
 void Menu_Draw( menuframework_s *menu )
 {
 	int i;
 	menucommon_s *item;
+
+	Menu_UpdateAutoSlide( menu );
+	Menu_UpdateAutoCursor( menu );
 
 	/*
 	** draw contents
@@ -648,9 +742,18 @@ void SpinControl_DoSlide( menulist_s *s, int dir )
 	s->curvalue += dir;
 
 	if ( s->curvalue < 0 )
-		s->curvalue = 0;
+	{
+		int last = 0;
+
+		while ( s->itemnames[last + 1] )
+			last++;
+
+		s->curvalue = last;
+	}
 	else if ( s->itemnames[s->curvalue] == 0 )
-		s->curvalue--;
+	{
+		s->curvalue = 0;
+	}
 
 	if ( s->generic.callback )
 		s->generic.callback( s );

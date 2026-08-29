@@ -1354,8 +1354,8 @@ void Options_MenuInit( void )
 	s_options_dpad_sensitivity_slider.generic.y		= 50;
 	s_options_dpad_sensitivity_slider.generic.name	= "D-pad speed";
 	s_options_dpad_sensitivity_slider.generic.callback = DpadSpeedFunc;
-	s_options_dpad_sensitivity_slider.minvalue		= 1;
-	s_options_dpad_sensitivity_slider.maxvalue		= 14;
+	s_options_dpad_sensitivity_slider.minvalue		= 0;
+	s_options_dpad_sensitivity_slider.maxvalue		= 13;
 
 	s_options_alwaysrun_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_alwaysrun_box.generic.x	= 0;
@@ -1422,7 +1422,7 @@ void Options_MenuInit( void )
 	s_options_defaults_action.generic.type	= MTYPE_ACTION;
 	s_options_defaults_action.generic.x		= 0;
 	s_options_defaults_action.generic.y		= 150;
-	s_options_defaults_action.generic.name	= "reset defaults";
+	s_options_defaults_action.generic.name	= "reset to defaults";
 	s_options_defaults_action.generic.callback = ControlsResetDefaultsFunc;
 
 	s_options_console_action.generic.type	= MTYPE_ACTION;
