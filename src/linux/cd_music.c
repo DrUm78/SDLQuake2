@@ -54,10 +54,10 @@
 
 #define DR_MP3_IMPLEMENTATION
 #define DR_MP3_NO_STDIO_LARGE   /* no need for very long paths here */
-#include "dr_mp3.h"
+#include "dr_libs/dr_mp3.h"
 
 #define DR_FLAC_IMPLEMENTATION
-#include "dr_flac.h"
+#include "dr_libs/dr_flac.h"
 
 /* Number of interleaved source-format PCM frames kept buffered for
    resampling. 8192 frames * up to 2 channels * 2 bytes = 32 KB, cheap
