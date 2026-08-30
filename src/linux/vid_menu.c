@@ -276,6 +276,9 @@ void VID_MenuInit( void )
 
 	static const char *resolutions[] = 
 	{
+#if defined __gcw__
+		"[320x240]",
+#else
 		"[320 240  ]",
 		"[400 300  ]",
 		"[512 384  ]",
@@ -291,11 +294,12 @@ void VID_MenuInit( void )
 		"[1152 768 ]", /* Apple TiBook */
 		"[1280 854 ]", /* apple TiBook */
 		"[640 400  ]", /* generic 16:10 widescreen resolutions */
- 		"[800 500  ]", /* as found on many modern notebooks    */
- 		"[1024 640 ]",
- 		"[1280 800 ]",
- 		"[1680 1050]",
- 		"[1920 1200]",
+		"[800 500  ]", /* as found on many modern notebooks    */
+		"[1024 640 ]",
+		"[1280 800 ]",
+		"[1680 1050]",
+		"[1920 1200]",
+#endif
 		0
 	};
 	static const char *yesno_names[] =
@@ -549,7 +553,7 @@ void VID_MenuInit( void )
 	      and only let you change to one which is supported.
 	v v v v
 */
-	//Menu_AddItem( &s_software_menu, ( void * ) &s_mode_list[SOFTWARE_MENU] );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_mode_list[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_screensize_slider[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_brightness_slider[SOFTWARE_MENU] );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_fs_box[SOFTWARE_MENU] );

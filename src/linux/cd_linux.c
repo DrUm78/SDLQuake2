@@ -54,7 +54,7 @@ static int cdfile = -1;
 
 //static char cd_dev[64] = "/dev/cdrom";
 
-cvar_t	*cd_volume;
+cvar_t *cd_volume;
 cvar_t *cd_nocd;
 cvar_t *cd_dev;
 

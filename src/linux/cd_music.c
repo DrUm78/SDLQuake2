@@ -567,9 +567,14 @@ void CDAudio_Update(void)
 
 	if (cd_volume && cd_volume->value != cdvolume)
 	{
-		cdvolume = cd_volume->value;
-		if (cdvolume < 0.0f) cdvolume = 0.0f;
-		if (cdvolume > 1.0f) cdvolume = 1.0f;
+		float v = cd_volume->value;
+		if (v < 0.0f) v = 0.0f;
+		if (v > 1.0f) v = 1.0f;
+		cdvolume = v;
+		/* Uncomment for a perceptually smoother slider curve instead
+		   of a linear gain (human hearing is roughly logarithmic):
+		cdvolume = v * v;
+		*/
 	}
 
 	if (cd_nocd->value)
