@@ -387,6 +387,44 @@ MAIN MENU
 */
 #define	MAIN_ITEMS	5
 
+#define MAIN_CURSOR_AUTOFIRE_DELAY	350	/* ms delay before autofire starts */
+#define MAIN_CURSOR_AUTOFIRE_RATE	80	/* ms between each step once autofire is active */
+
+static int s_main_cursor_dir  = 0;
+static int s_main_cursor_next = 0;
+
+static void M_Main_UpdateAutoCursor( void )
+{
+	extern int keydown[];
+	extern void M_Keydown( int key );
+	int dir;
+
+	dir = 0;
+	if ( keydown[K_UPARROW] || keydown[K_KP_UPARROW] )
+		dir = -1;
+	else if ( keydown[K_DOWNARROW] || keydown[K_KP_DOWNARROW] )
+		dir = 1;
+
+	if ( !dir )
+	{
+		s_main_cursor_dir = 0;
+		return;
+	}
+
+	if ( dir != s_main_cursor_dir )
+	{
+		s_main_cursor_dir  = dir;
+		s_main_cursor_next = Sys_Milliseconds() + MAIN_CURSOR_AUTOFIRE_DELAY;
+		return;
+	}
+
+	if ( Sys_Milliseconds() >= s_main_cursor_next )
+	{
+		M_Keydown( dir < 0 ? K_UPARROW : K_DOWNARROW );
+		s_main_cursor_next = Sys_Milliseconds() + MAIN_CURSOR_AUTOFIRE_RATE;
+	}
+}
+
 
 void M_Main_Draw (void)
 {
@@ -406,6 +444,8 @@ void M_Main_Draw (void)
 		"m_main_quit",
 		0
 	};
+
+	M_Main_UpdateAutoCursor();
 
 	for ( i = 0; names[i] != 0; i++ )
 	{
