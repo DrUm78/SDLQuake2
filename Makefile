@@ -536,7 +536,7 @@ endif
 endif
 
 QUAKE2_SDL_OBJS = \
-	$(BUILDDIR)/client/cd_mp3.o \
+	$(BUILDDIR)/client/cd_music.o \
 	$(BUILDDIR)/client/snd_sdl.o
 
 ifeq ($(ARCH),i386)
@@ -702,7 +702,7 @@ $(BUILDDIR)/client/snd_alsa.o :  $(LINUX_DIR)/snd_alsa.c
 $(BUILDDIR)/client/snd_linux.o :  $(LINUX_DIR)/snd_linux.c
 	$(DO_CC)
 
-$(BUILDDIR)/client/cd_mp3.o :     $(LINUX_DIR)/cd_mp3.c
+$(BUILDDIR)/client/cd_music.o :     $(LINUX_DIR)/cd_music.c
 	$(DO_CC) $(SDLCFLAGS)
 
 $(BUILDDIR)/client/snd_sdl.o :     $(LINUX_DIR)/snd_sdl.c
