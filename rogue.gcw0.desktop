@@ -1,6 +1,0 @@
-[Desktop Entry]
-Name=Ground Zero
-Comment=Quake II Mission Pack 2: Ground Zero
-Exec=sdlquake2 +set game rogue
-Icon=q2
-Categories=games

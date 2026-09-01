@@ -2,3 +2,4 @@
 *.opk
 debuggcw/*
 releasegcw/*
+src/launcher/launcher

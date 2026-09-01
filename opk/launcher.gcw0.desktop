@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Quake II SDL
 Comment=SDLQuake II port for OpenDingux
-Exec=/bin/sh -c ./sdlquake2
+Exec=launcher
 Icon=q2
 Categories=games

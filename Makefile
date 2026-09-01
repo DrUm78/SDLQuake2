@@ -19,7 +19,7 @@ BUILD_GLX=NO		# X11 GLX driver. Works somewhat ok.
 BUILD_FXGL=NO		# FXMesa driver. Not tested. (used only for V1 and V2).
 BUILD_SDL=YES		# SDL software driver. Works fine for some people.
 BUILD_SDLGL=NO		# SDL OpenGL driver. Works fine for some people.
-BUILD_CTFDLL=NO		# game$(ARCH).so for ctf
+BUILD_CTFDLL=YES	# game$(ARCH).so for ctf
 BUILD_XATRIX=YES	# game$(ARCH).so for xatrix (see README.r for details)
 BUILD_ROGUE=YES		# game$(ARCH).so for rogue (see README.r for details)
 BUILD_JOYSTICK=YES	# build in joystick support
@@ -68,6 +68,7 @@ endif
 
 # Use same compiler (GCC 4.9.1) as JohnnyonFlame's release to ensure save compatibility
 CC=/opt/gcw0-toolchain/usr/bin/mipsel-gcw0-linux-uclibc-gcc
+STRIP=/opt/gcw0-toolchain/usr/bin/mipsel-gcw0-linux-uclibc-strip
 
 ifndef OPT_CFLAGS
 ifeq ($(ARCH),axp)
@@ -466,6 +467,8 @@ build_release:
 		$(BUILD_RELEASE_DIR)/xatrix \
 		$(BUILD_RELEASE_DIR)/rogue
 	$(MAKE) targets BUILDDIR=$(BUILD_RELEASE_DIR) CFLAGS="$(RELEASE_CFLAGS) -DLINUX_VERSION='\"$(VERSION)\"'"
+	@find $(BUILD_RELEASE_DIR) -type f \( -perm -u+x -o -name '*.$(SHLIBEXT)' \) ! -name '*.o' -print0 | \
+		xargs -0 -r $(STRIP) --strip-unneeded
 
 targets: $(TARGETS)
 

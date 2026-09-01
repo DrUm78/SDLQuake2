@@ -1,6 +1,0 @@
-[Desktop Entry]
-Name=The Reckoning
-Comment=Quake II Mission Pack: The Reckoning
-Exec=sdlquake2 +set game xatrix
-Icon=q2
-Categories=games
