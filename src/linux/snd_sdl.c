@@ -2,7 +2,7 @@
 	snd_sdl.c
 
 	Sound code taken from SDLQuake and modified to work with Quake2
-	Robert Bäuml 2001-12-25
+	Robert BÃ¤uml 2001-12-25
 
 	This program is free software; you can redistribute it and/or
 	modify it under the terms of the GNU General Public License
@@ -25,6 +25,8 @@
 	$Id$
 */
 
+#include <stdint.h>
+
 #include "SDL.h"
 
 #include "../client/client.h"
@@ -41,7 +43,6 @@ paint_audio (void *unused, Uint8 * stream, int len)
 	if (shm) {
 		shm->buffer = stream;
 		shm->samplepos += len / (shm->samplebits / 4);
-		// Check for samplepos overflow?
 		S_PaintChannels (shm->samplepos);
 	}
 	CDAudio_MixSamples(stream, len);
@@ -149,7 +150,7 @@ SNDDMA_Init (void)
 	return 1;
 }
 
-int
+int64_t
 SNDDMA_GetDMAPos (void)
 {
 	return shm->samplepos;

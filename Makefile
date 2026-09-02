@@ -432,7 +432,7 @@ ifeq ($(ARCH),gcw)
  ifeq ($(strip $(BUILD_SDLGL)),YES)
   TARGETS += $(BUILDDIR)/ref_sdlgl.$(SHLIBEXT)
  endif
-endif # ARCH i386
+endif # ARCH gcw
 
 ifeq ($(strip $(BUILD_AA)),YES)
 	TARGETS += $(BUILDDIR)/ref_softaa.$(SHLIBEXT)

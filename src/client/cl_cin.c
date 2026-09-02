@@ -570,6 +570,8 @@ void SCR_PlayCinematic (char *arg)
 	byte	*palette;
 	char	name[MAX_OSPATH], *dot;
 
+	SCR_StopCinematic ();
+
 	// make sure CD isn't playing music
 	CDAudio_Stop();
 

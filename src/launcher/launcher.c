@@ -42,6 +42,8 @@ int init_sdl() {
         return 0;
     }
 
+    SDL_ShowCursor(SDL_DISABLE);
+
     SDL_WM_SetCaption("Launcher", NULL);
 
     if (TTF_Init() == -1) {
@@ -49,7 +51,7 @@ int init_sdl() {
         return 0;
     }
 
-    font = TTF_OpenFont("SourceHanSans-Regular-04.ttf", 14);
+    font = TTF_OpenFont("dpquake_.ttf", 16);
     if (!font) {
         fprintf(stderr, "Erreur TTF_OpenFont: %s\n", TTF_GetError());
         return 0;
@@ -88,8 +90,8 @@ void list_files() {
     closedir(dir);
 }
 
-void draw_text(int x, int y, const char *text, SDL_Color color) {
-    SDL_Surface *text_surface = TTF_RenderText_Solid(font, text, color);
+void draw_text(int x, int y, const char *text, SDL_Color fg, SDL_Color bg) {
+    SDL_Surface *text_surface = TTF_RenderUTF8_Shaded(font, text, fg, bg);
     if (!text_surface) return;
 
     SDL_Rect dest = {x, y, 0, 0};
@@ -120,13 +122,16 @@ void render_files() {
     SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
     SDL_Color white = {255, 255, 255};
+    SDL_Color black = {0, 0, 0};
     int y = 70;
 
-    draw_text(get_centered_x("Select the game to launch"), 20, "Select the game to launch", white);
+    draw_text(0, 0, "¢", white, black);
+    draw_text(get_centered_x("SELECT YOUR GAME"), 20, "SELECT YOUR GAME", white, black);
+    draw_text(304, 0, "¢", white, black);
 
     for (int i = 0; i < file_count; i++) {
         if (i == selected_index) {
-            draw_text(10, y, ">", white);
+            draw_text(10, y, "~", white, black);
         }
 
         char display_name[256];
@@ -134,11 +139,13 @@ void render_files() {
         display_name[sizeof(display_name) - 1] = '\0';
         remove_known_extension(display_name);
 
-        draw_text(30, y, display_name, white);
+        draw_text(30, y, display_name, white, black);
         y += 30;
     }
 
-    draw_text(10, SCREEN_HEIGHT - 20, "A: Launch  B: Quit", white);
+    draw_text(0, SCREEN_HEIGHT - 20, "¢", white, black);
+    draw_text(30, SCREEN_HEIGHT - 20, "A: LAUNCH  B: QUIT", white, black);
+    draw_text(304, SCREEN_HEIGHT - 20, "¢", white, black);
     SDL_Flip(screen);
 }
 

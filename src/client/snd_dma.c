@@ -53,8 +53,8 @@ vec3_t		listener_up;
 
 qboolean	s_registering;
 
-int			soundtime;		// sample PAIRS
-int   		paintedtime; 	// sample PAIRS
+int64_t		soundtime;		// sample PAIRS
+int64_t		paintedtime; 	// sample PAIRS
 
 // during registration it is possible to have more sounds
 // than could actually be referenced during gameplay,
@@ -69,7 +69,7 @@ playsound_t	s_playsounds[MAX_PLAYSOUNDS];
 playsound_t	s_freeplays;
 playsound_t	s_pendingplays;
 
-int			s_beginofs;
+int64_t		s_beginofs;
 
 cvar_t		*s_volume;
 cvar_t		*s_testsound;
@@ -82,7 +82,7 @@ cvar_t		*s_primary;
 cvar_t		*cd_shuffle;
 
 
-int		s_rawend;
+int64_t	s_rawend;
 portable_samplepair_t	s_rawsamples[MAX_RAW_SAMPLES];
 
 
@@ -661,7 +661,7 @@ void S_StartSound(vec3_t origin, int entnum, int entchannel, sfx_t *sfx, float f
 	sfxcache_t	*sc;
 	int			vol;
 	playsound_t	*ps, *sort;
-	int			start;
+	int64_t		start;
 
 	if (!sound_started)
 		return;
@@ -1113,10 +1113,10 @@ void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 void GetSoundtime(void)
 {
-	int		samplepos;
-	static	int		buffers;
-	static	int		oldsamplepos;
-	int		fullsamples;
+	int64_t	samplepos;
+	static	int64_t	buffers;
+	static	int64_t	oldsamplepos;
+	int64_t	fullsamples;
 	
 	fullsamples = dma.samples / dma.channels;
 
@@ -1127,13 +1127,6 @@ void GetSoundtime(void)
 	if (samplepos < oldsamplepos)
 	{
 		buffers++;					// buffer wrapped
-		
-		if (paintedtime > 0x40000000)
-		{	// time to chop things off to avoid 32 bit limits
-			buffers = 0;
-			paintedtime = fullsamples;
-			S_StopAllSounds ();
-		}
 	}
 	oldsamplepos = samplepos;
 
@@ -1143,8 +1136,8 @@ void GetSoundtime(void)
 
 void S_Update_(void)
 {
-	unsigned        endtime;
-	int				samps;
+	int64_t			endtime;
+	int64_t			samps;
 
 	if (!sound_started)
 		return;

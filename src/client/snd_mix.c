@@ -105,10 +105,10 @@ LClampDone2:
 #endif
 #endif
 
-void S_TransferStereo16 (unsigned long *pbuf, int endtime)
+void S_TransferStereo16 (unsigned long *pbuf, int64_t endtime)
 {
-	int		lpos;
-	int		lpaintedtime;
+	int64_t	lpos;
+	int64_t	lpaintedtime;
 	
 	snd_p = (int *) paintbuffer;
 	lpaintedtime = paintedtime;
@@ -140,7 +140,7 @@ S_TransferPaintBuffer
 
 ===================
 */
-void S_TransferPaintBuffer(int endtime)
+void S_TransferPaintBuffer(int64_t endtime)
 {
 	int 	out_idx;
 	int 	count;
@@ -221,13 +221,13 @@ CHANNEL MIXING
 void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int endtime, int offset);
 void S_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int endtime, int offset);
 
-void S_PaintChannels(int endtime)
+void S_PaintChannels(int64_t endtime)
 {
-	int 	i;
-	int 	end;
+	int64_t	i;
+	int64_t	end;
 	channel_t *ch;
 	sfxcache_t	*sc;
-	int		ltime, count;
+	int64_t	ltime, count;
 	playsound_t	*ps;
 
 	snd_vol = s_volume->value*256;
@@ -266,7 +266,7 @@ void S_PaintChannels(int endtime)
 		else
 		{	// copy from the streaming sound source
 			int		s;
-			int		stop;
+			int64_t	stop;
 
 			stop = (end < s_rawend) ? end : s_rawend;
 

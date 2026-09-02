@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // snd_loc.h -- private sound functions
 
+#include <stdint.h>
+
 // !!! if this is changed, the asm code must change !!!
 typedef struct
 {
@@ -57,7 +59,7 @@ typedef struct playsound_s
 	int			entchannel;
 	qboolean	fixed_origin;	// use origin field instead of entnum's origin
 	vec3_t		origin;
-	unsigned	begin;			// begin on this sample
+	int64_t		begin;			// begin on this sample
 } playsound_t;
 
 typedef struct
@@ -65,7 +67,7 @@ typedef struct
 	int			channels;
 	int			samples;				// mono samples in buffer
 	int			submission_chunk;		// don't mix less than this #
-	int			samplepos;				// in mono samples
+	int64_t		samplepos;				// in mono samples
 	int			samplebits;
 	int			speed;
 	byte		*buffer;
@@ -77,7 +79,7 @@ typedef struct
 	sfx_t		*sfx;			// sfx number
 	int			leftvol;		// 0-255 volume
 	int			rightvol;		// 0-255 volume
-	int			end;			// end time in global paintsamples
+	int64_t		end;			// end time in global paintsamples
 	int 		pos;			// sample position in sfx
 	int			looping;		// where to loop, -1 = no looping OBSOLETE?
 	int			entnum;			// to allow overriding a specific sound
@@ -112,7 +114,7 @@ typedef struct
 qboolean SNDDMA_Init(void);
 
 // gets the current DMA position
-int		SNDDMA_GetDMAPos(void);
+int64_t	SNDDMA_GetDMAPos(void);
 
 // shutdown the DMA xfer.
 void	SNDDMA_Shutdown(void);
@@ -126,8 +128,8 @@ void	SNDDMA_Submit(void);
 #define	MAX_CHANNELS			32
 extern	channel_t   channels[MAX_CHANNELS];
 
-extern	int		paintedtime;
-extern	int		s_rawend;
+extern	int64_t	paintedtime;
+extern	int64_t	s_rawend;
 extern	vec3_t	listener_origin;
 extern	vec3_t	listener_forward;
 extern	vec3_t	listener_right;
@@ -155,7 +157,7 @@ sfxcache_t *S_LoadSound (sfx_t *s);
 
 void S_IssuePlaysound (playsound_t *ps);
 
-void S_PaintChannels(int endtime);
+void S_PaintChannels(int64_t endtime);
 
 // picks a channel based on priorities, empty slots, number of channels
 channel_t *S_PickChannel(int entnum, int entchannel);

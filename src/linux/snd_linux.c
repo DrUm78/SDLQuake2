@@ -257,7 +257,7 @@ qboolean SNDDMA_Init(void)
 	return 1;
 }
 
-int SNDDMA_GetDMAPos(void)
+int64_t SNDDMA_GetDMAPos(void)
 {
 	struct count_info count;
 
