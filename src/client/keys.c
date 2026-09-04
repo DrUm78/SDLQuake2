@@ -828,7 +828,7 @@ void Key_Event (int key, qboolean down, unsigned time)
 		shift_down = down;
 
 	// console key is hardcoded, so the user can never unbind it
-	if (key == '`' || key == '~')
+	if ((key == '`' || key == '~') && !cls.disable_screen)
 	{
 		if (!down)
 			return;
@@ -842,7 +842,7 @@ void Key_Event (int key, qboolean down, unsigned time)
 		key = K_ENTER;*/
 
 	// menu key is hardcoded, so the user can never unbind it
-	if (key == K_ENTER)
+	if (key == K_ENTER && !cls.disable_screen)
 	{
 		if (!down)
 			return;
