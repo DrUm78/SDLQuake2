@@ -42,9 +42,9 @@ BUILD_SDLQUAKE2		Build sdlquake2, a quake2 binary that uses SDL for
 BUILD_SVGA              Build ref_soft.so, a quake2 video driver that uses
                         SVGAlib (default = NO).
 BUILD_X11               Build ref_softx.so, a quake2 video driver that uses
-                        X11 (default = YES).
+                        X11 (default = NO).
 BUILD_GLX               Build ref_glx.so, a quake2 video driver that uses
-                        X11's GLX (default = YES).
+                        X11's GLX (default = NO).
 BUILD_FXGL              Build ref_gl.so [might be renamed to fxgl later], 
                         a quake2 video driver that uses fxMesa (default =
                         NO).  This option is currently untested because I do 
@@ -52,19 +52,21 @@ BUILD_FXGL              Build ref_gl.so [might be renamed to fxgl later],
 BUILD_SDL               Build ref_softsdl.so, a quake2 video driver that
                         uses SDL (default = YES).
 BUILD_SDLGL             Build ref_sdlgl.so, a quake2 video driver that uses
-                        OpenGL with SDL (default = YES).
-BUILD_CTFDLL            Build the Threewave CTF gamei386.so (default = NO).
+                        OpenGL with SDL (default = NO).
+BUILD_CTF               Build the Threewave CTF gamei386.so (default = YES).
 BUILD_XATRIX            Build the Xatrix gamei386.so for the "The Reckoning"
-                        Mission Pack (default = NO). [see notes below]
+                        Mission Pack (default = YES). [see notes below]
 BUILD_ROGUE             Build the Rogue gamei386.so for the "Ground Zero"
-                        Mission Pack (default = NO). [see notes below]
+                        Mission Pack (default = YES). [see notes below]
+BUILD_ZAERO             Build the Zaero gamei386.so Mission Pack (default = YES).
+BUILD_SMD               Build the SMD gamei386.so for the "Slight Mechanical Destruction"
+                        Mission Pack (default = YES).
 HAVE_IPV6		Build quake2 with IPv6 support (currently only
                         tested on FreeBSD, see below for info) (default = NO).
-BUILD_JOYSTICK		Build quake2 with support for SDL and Linux joysticks,
-			[default = YES].
+BUILD_JOYSTICK		Build quake2 with support for SDL and Linux joysticks (default = YES).
 BUILD_ARTS		Build support for the aRts sound system 
-			(src/linux/snd_arts.c) [default = NO]
-BUILD_ALSA		Build support for the ALSA sound system [default = NO]
+			(src/linux/snd_arts.c) (default = NO)
+BUILD_ALSA		Build support for the ALSA sound system (default = NO)
 BUILD_DEDICATED		Build the quake 2 dedicated server q2ded.
 BUILD_QMAX		Build the eye-candy oriented Quame2 Max (see below)
 BUILD_AA		Build the aalib text mode renderer.
@@ -114,37 +116,20 @@ To install this program:
 To install the "The Reckoning" Mission Pack (Xatrix):
 -----------------------------------------------------
 (cdromdir is wherever you mount The Reckoning CD-ROM)
-1. enable BUILD_XATRIX in Makefile
-2. download xatrixsrc320.shar.Z from
-   ftp://ftp.idsoftware.com/idstuff/quake2/source/ or a mirror site, extract
-   it (it's a compressed shell script) and place the contents in 
-   <quake2-rX.X.X>/src/xatrix/
-3. make
-4. copy <builddir>/xatrix/gamei386.so to <installdir>/xatrix/
-5. copy <cdromdir>/Data/all/pak0.pak to <installdir>/xatrix/
-6. copy <cdromdir>/Data/max/xatrix/video/ to <installdir>/xatrix/ (optional)
-7. when starting quake2, use "+set game xatrix" on the command line
+1. make
+2. copy <builddir>/xatrix/gamei386.so to <installdir>/xatrix/
+3. copy <cdromdir>/Data/all/pak0.pak to <installdir>/xatrix/
+4. copy <cdromdir>/Data/max/xatrix/video/ to <installdir>/xatrix/ (optional)
+5. when starting quake2, use "+set game xatrix" on the command line
 
 To install the "Ground Zero" Mission Pack (Rogue):
 --------------------------------------------------
 (cdromdir is wherever you mount the Ground Zero CD-ROM)
-1. enable BUILD_ROGUE in Makefile
-2. download roguesrc320.shar.Z from
-   ftp://ftp.idsoftware.com/idstuff/quake2/source or a mirror site, extract
-   it (it's a compressed shell script) and place the contents in
-   <quake2-rX.X.X>/src/rogue/
-3. make
-4. if the compilation fails, change line 31 of src/rogue/g_local.h from:
-#define _isnan(a) ((a)==NAN)
-   to:
-#define _isnan(a) isnan(a)
-   and try again.
-4.5 if the compilation fails on the include, change #include <nan.h> to 
-#include <bits/nan.h>
-5. copy <builddir>/rogue/gamei386.so to <installdir>/rogue/
-6. copy <cdromdir>/Data/all/pak0.pak to <installdir>/rogue/
-7. copy <cdromdir>/Data/max/Rogue/video/ to <installdir>/rogue/ (optional)
-8. when starting quake2, use "+set game rogue" on the command line
+1. make
+2. copy <builddir>/rogue/gamei386.so to <installdir>/rogue/
+3. copy <cdromdir>/Data/all/pak0.pak to <installdir>/rogue/
+4. copy <cdromdir>/Data/max/Rogue/video/ to <installdir>/rogue/ (optional)
+5. when starting quake2, use "+set game rogue" on the command line
 
 To Build Quake2 Max.
 -------------------

@@ -52,6 +52,8 @@ int init_sdl() {
     }
 
     font = TTF_OpenFont("dpquake_.ttf", 16);
+    TTF_SetFontHinting(font, TTF_HINTING_LIGHT); // or TTF_HINTING_MONO for "pixel-perfect"
+    TTF_SetFontStyle(font, TTF_STYLE_BOLD);
     if (!font) {
         fprintf(stderr, "Erreur TTF_OpenFont: %s\n", TTF_GetError());
         return 0;
@@ -125,9 +127,9 @@ void render_files() {
     SDL_Color black = {0, 0, 0};
     int y = 55;
 
-    draw_text(0, 0, "¢", white, black);
-    draw_text(get_centered_x("SELECT YOUR GAME"), 20, "SELECT YOUR GAME", white, black);
-    draw_text(304, 0, "¢", white, black);
+    //draw_text(0, 0, "¢", white, black);
+    draw_text(get_centered_x("Select your game"), 20, "Select your game", white, black);
+    //draw_text(302, 0, "¢", white, black);
 
     for (int i = 0; i < file_count; i++) {
         if (i == selected_index) {
@@ -143,9 +145,9 @@ void render_files() {
         y += 25;
     }
 
-    draw_text(0, SCREEN_HEIGHT - 20, "¢", white, black);
-    draw_text(30, SCREEN_HEIGHT - 20, "A: LAUNCH  B: QUIT", white, black);
-    draw_text(304, SCREEN_HEIGHT - 20, "¢", white, black);
+    //draw_text(0, SCREEN_HEIGHT - 21, "¢", white, black);
+    draw_text(30, SCREEN_HEIGHT - 21, "a: launch  b: quit", white, black);
+    //draw_text(302, SCREEN_HEIGHT - 21, "¢", white, black);
     SDL_Flip(screen);
 }
 
