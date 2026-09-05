@@ -42,7 +42,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -199,33 +198,41 @@ static qboolean Music_Open(const char *path)
 	this is usually FS_Gamedir() (qcommon/files.c).
 */
 
-/* Creates the music directory if it doesn't exist yet. Best-effort:
-   if it fails (permissions, read-only filesystem...), CD_TrackPath()
-   below will simply fail to find any file in it and CDAudio_Play()
-   will log that and do nothing, same as a missing file today. */
-static void CD_EnsureMusicDir(void)
+/* Builds the "baseq2" directory that sits next to the current mod's
+   own directory (e.g. .../ctf -> .../baseq2), derived from
+   FS_Gamedir() rather than hardcoded, so it still works whatever the
+   actual install path is. Used as a fallback so mods with no
+   soundtrack of their own (xatrix, rogue, ctf, ...) can share a single
+   music/ folder instead of every mod needing its own copy. Returns
+   false if FS_Gamedir() doesn't contain a '/' to derive a sibling
+   from (defensive; shouldn't happen in practice). If the current
+   gamedir already IS baseq2 (no mod active), this just resolves back
+   to the same directory - harmless, just means the fallback attempt
+   below is a redundant (but safe) re-check of the same path. */
+static qboolean CD_BaseGameDir(char *dst, size_t dstSize)
 {
-	char dir[MAX_OSPATH];
-	struct stat st;
+	char gamedir[MAX_OSPATH];
+	char *slash;
 
-	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
+	Com_sprintf(gamedir, sizeof(gamedir), "%s", FS_Gamedir());
 
-	if (stat(dir, &st) == 0)
-		return; /* already there (file or dir, either way don't touch it) */
+	slash = strrchr(gamedir, '/');
+	if (!slash)
+		return false;
 
-	if (mkdir(dir, 0755) != 0)
-		Com_DPrintf("CD_EnsureMusicDir: could not create %s\n", dir);
+	*slash = 0; /* truncate to the parent of the current mod dir */
+
+	/* "baseq2" here matches the engine's own base game directory name
+	   (BASEDIRNAME in qcommon/files.c) - hardcoded rather than pulled
+	   in from there, to keep this module's dependencies minimal. */
+	Com_sprintf(dst, dstSize, "%s/baseq2", gamedir);
+	return true;
 }
 
-/* Resolves the file for a given track number, trying in order:
-   trackNN.mp3, NN.mp3, trackNN.flac, NN.flac (first match wins - MP3
-   is tried first purely for backward compatibility with existing
-   music folders; swap the order below if you'd rather prefer FLAC
-   when both exist). Returns true and fills dst with the path that was
-   actually found; returns false if none of the four forms exist (dst
-   is still filled with the trackNN.mp3 form, handy for the "file not
-   found" log message). */
-static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
+/* Tries the four track-naming conventions (trackNN.mp3, NN.mp3,
+   trackNN.flac, NN.flac) directly under 'root/cd_musicdir'. Returns
+   true and fills dst on the first match, false if none exist there. */
+static qboolean CD_TryTrackInDir(const char *root, char *dst, size_t dstSize, int track)
 {
 	static const char *patterns[] = {
 		"%s/%s/track%02d.mp3",
@@ -235,15 +242,11 @@ static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
 	};
 	int i;
 
-	CD_EnsureMusicDir();
-
-	Com_sprintf(dst, dstSize, patterns[0], FS_Gamedir(), cd_musicdir->string, track);
-
 	for (i = 0; i < (int)(sizeof(patterns) / sizeof(patterns[0])); i++)
 	{
 		char candidate[MAX_OSPATH];
 		Com_sprintf(candidate, sizeof(candidate), patterns[i],
-			FS_Gamedir(), cd_musicdir->string, track);
+			root, cd_musicdir->string, track);
 		if (access(candidate, F_OK) == 0)
 		{
 			Com_sprintf(dst, dstSize, "%s", candidate);
@@ -254,26 +257,45 @@ static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
 	return false;
 }
 
-/* Scans the music directory for files matching "trackNN.mp3",
-   "NN.mp3", "trackNN.flac" or "NN.flac" and collects the track
-   numbers found into 'tracks' (deduplicated - if several forms exist
-   for the same number it's only counted once). Tracks below
-   cd_mintrack are skipped (default 2, to skip a would-be "data track"
-   the way real Quake2 CDs do). Returns the number of tracks found. */
-static int CD_ScanMusicDir(int *tracks, int maxTracks)
+/* Resolves the file for a given track number: tries the current mod's
+   own music directory first, then falls back to baseq2's music
+   directory if the mod doesn't have that track (or has no music
+   directory at all) - so mods without their own soundtrack don't need
+   their music/ folder populated at all. Returns true and fills dst
+   with the path that was actually found; returns false if the track
+   exists in neither place (dst is still filled with the mod-dir
+   trackNN.mp3 form, handy for the "file not found" log message). */
+static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
 {
-	char dir[MAX_OSPATH];
+	char baseDir[MAX_OSPATH];
+
+	Com_sprintf(dst, dstSize, "%s/%s/track%02d.mp3",
+		FS_Gamedir(), cd_musicdir->string, track);
+
+	if (CD_TryTrackInDir(FS_Gamedir(), dst, dstSize, track))
+		return true;
+
+	if (CD_BaseGameDir(baseDir, sizeof(baseDir)) &&
+		CD_TryTrackInDir(baseDir, dst, dstSize, track))
+		return true;
+
+	return false;
+}
+
+/* Scans one directory for files matching "trackNN.mp3", "NN.mp3",
+   "trackNN.flac" or "NN.flac" and appends the track numbers found into
+   'tracks' (deduplicated against what's already in there). Tracks
+   below cd_mintrack are skipped (default 2, to skip a would-be "data
+   track" the way real Quake2 CDs do). Returns the updated count. */
+static int CD_ScanOneDir(const char *dirPath, int *tracks, int count, int maxTracks)
+{
 	DIR *d;
 	struct dirent *entry;
-	int count = 0;
 	int i;
 
-	CD_EnsureMusicDir();
-	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
-
-	d = opendir(dir);
+	d = opendir(dirPath);
 	if (!d)
-		return 0;
+		return count;
 
 	while (count < maxTracks && (entry = readdir(d)) != NULL)
 	{
@@ -307,6 +329,30 @@ static int CD_ScanMusicDir(int *tracks, int maxTracks)
 	}
 
 	closedir(d);
+	return count;
+}
+
+/* Scans the current mod's music directory for available tracks, then
+   the baseq2 fallback directory too (so a random pick can draw from
+   whichever soundtrack is actually populated) - same track-naming
+   rules and dedup as CD_TrackPath(). Returns the number of tracks
+   found. */
+static int CD_ScanMusicDir(int *tracks, int maxTracks)
+{
+	char dir[MAX_OSPATH];
+	char baseDir[MAX_OSPATH];
+	int count = 0;
+
+	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
+	count = CD_ScanOneDir(dir, tracks, count, maxTracks);
+
+	if (CD_BaseGameDir(baseDir, sizeof(baseDir)))
+	{
+		char musicDir[MAX_OSPATH];
+		Com_sprintf(musicDir, sizeof(musicDir), "%s/%s", baseDir, cd_musicdir->string);
+		count = CD_ScanOneDir(musicDir, tracks, count, maxTracks);
+	}
+
 	return count;
 }
 
