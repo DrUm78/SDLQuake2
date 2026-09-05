@@ -123,7 +123,7 @@ void render_files() {
 
     SDL_Color white = {255, 255, 255};
     SDL_Color black = {0, 0, 0};
-    int y = 70;
+    int y = 60;
 
     draw_text(0, 0, "¢", white, black);
     draw_text(get_centered_x("SELECT YOUR GAME"), 20, "SELECT YOUR GAME", white, black);
