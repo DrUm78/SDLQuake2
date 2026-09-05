@@ -8,7 +8,7 @@
 
 #define SCREEN_WIDTH   320
 #define SCREEN_HEIGHT  240
-#define MAX_FILES      5
+#define MAX_FILES      6
 #define MAX_EXTENSIONS 4
 
 const char *extensions[MAX_EXTENSIONS] = {".elf", ".dge", ".sh", ".opk"};
@@ -123,7 +123,7 @@ void render_files() {
 
     SDL_Color white = {255, 255, 255};
     SDL_Color black = {0, 0, 0};
-    int y = 60;
+    int y = 55;
 
     draw_text(0, 0, "¢", white, black);
     draw_text(get_centered_x("SELECT YOUR GAME"), 20, "SELECT YOUR GAME", white, black);
@@ -140,7 +140,7 @@ void render_files() {
         remove_known_extension(display_name);
 
         draw_text(30, y, display_name, white, black);
-        y += 30;
+        y += 25;
     }
 
     draw_text(0, SCREEN_HEIGHT - 20, "¢", white, black);
