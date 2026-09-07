@@ -159,6 +159,7 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 	switch ( key )
 	{
 	case K_ALT:
+	case K_ENTER:
 		M_PopMenu();
 		return menu_out_sound;
 	case K_KP_UPARROW:
@@ -484,6 +485,7 @@ const char *M_Main_Key (int key)
 	switch (key)
 	{
 	case K_ALT:
+	case K_ENTER:
 		M_PopMenu ();
 		break;
 
@@ -1954,6 +1956,7 @@ const char *M_Credits_Key( int key )
 	switch (key)
 	{
 	case K_ALT:
+	case K_ENTER:
 		if (creditsBuffer)
 			FS_FreeFile (creditsBuffer);
 		M_PopMenu ();
@@ -4062,13 +4065,13 @@ const char *M_Quit_Key (int key)
 	case K_ESCAPE:
 	case 'n':
 	case 'N':
+	case K_ENTER:
 	case K_ALT:
 		M_PopMenu ();
 		break;
 
-	case 'Y':
 	case 'y':
-	case K_ENTER:
+	case 'Y':
 	case K_CTRL:
 		cls.key_dest = key_console;
 		CL_Quit_f ();

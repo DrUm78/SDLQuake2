@@ -42,6 +42,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -198,6 +199,20 @@ static qboolean Music_Open(const char *path)
 	this is usually FS_Gamedir() (qcommon/files.c).
 */
 
+static void CD_CreateMusicDir(void)
+{
+	char dir[MAX_OSPATH];
+	struct stat st;
+
+	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
+
+	if (stat(dir, &st) == 0)
+		return; /* already there (file or dir, either way don't touch it) */
+
+	if (mkdir(dir, 0755) != 0)
+		Com_DPrintf("CD_CreateMusicDir: could not create %s\n", dir);
+}
+
 /* Builds the "baseq2" directory that sits next to the current mod's
    own directory (e.g. .../ctf -> .../baseq2), derived from
    FS_Gamedir() rather than hardcoded, so it still works whatever the
@@ -269,6 +284,7 @@ static qboolean CD_TrackPath(char *dst, size_t dstSize, int track)
 {
 	char baseDir[MAX_OSPATH];
 
+	CD_CreateMusicDir();
 	Com_sprintf(dst, dstSize, "%s/%s/track%02d.mp3",
 		FS_Gamedir(), cd_musicdir->string, track);
 
@@ -343,6 +359,7 @@ static int CD_ScanMusicDir(int *tracks, int maxTracks)
 	char baseDir[MAX_OSPATH];
 	int count = 0;
 
+	CD_CreateMusicDir();
 	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), cd_musicdir->string);
 	count = CD_ScanOneDir(dir, tracks, count, maxTracks);
 

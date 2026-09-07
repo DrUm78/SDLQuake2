@@ -18,6 +18,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include "client.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 
 typedef struct
 {
@@ -45,6 +47,20 @@ typedef struct
 } cinematics_t;
 
 cinematics_t	cin;
+
+static void CD_CreateVideoDir(void)
+{
+	char dir[MAX_OSPATH];
+	struct stat st;
+
+	Com_sprintf(dir, sizeof(dir), "%s/%s", FS_Gamedir(), "video");
+
+	if (stat(dir, &st) == 0)
+		return; /* already there (file or dir, either way don't touch it) */
+
+	if (mkdir(dir, 0755) != 0)
+		Com_DPrintf("CD_CreateVideoDir: could not create %s\n", dir);
+}
 
 /*
 =================================================================
@@ -602,6 +618,7 @@ void SCR_PlayCinematic (char *arg)
 		return;
 	}
 
+	CD_CreateVideoDir();
 	Com_sprintf (name, sizeof(name), "video/%s", arg);
 	FS_FOpenFile (name, &cl.cinematic_file);
 	if (!cl.cinematic_file)
