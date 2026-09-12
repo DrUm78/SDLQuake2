@@ -1744,7 +1744,7 @@ void CL_Frame (int msec)
 		// If hardware VSync is enabled, it dictates the rendering pace —
 		// the software throttle `cl_maxfps` becomes unnecessary and can even
 		// cause a beating effect with the VSync clock
-		if (vid_vsync->value != 1)
+		if (vid_vsync->value == 0)
 		{
 			if (extratime < 1000/cl_maxfps->value)
 				return;			// framerate is too high

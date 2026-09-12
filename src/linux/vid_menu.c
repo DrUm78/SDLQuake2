@@ -165,7 +165,7 @@ static void DrawClockCallback( void *unused )
 static void ResetDefaults( void *unused )
 {
 	Cvar_SetValue( "viewsize", 100 );
-	Cvar_SetValue( "vid_gamma", 0.700000 );
+	Cvar_SetValue( "vid_gamma", 0.7 );
 	Cvar_SetValue( "sw_stipplealpha", 0 );
 	Cvar_SetValue( "vid_vsync", 0 );
 	Cvar_SetValue( "cl_drawfps", 0 );
@@ -313,7 +313,6 @@ void VID_MenuInit( void )
 	{
 		"disabled",
 		"enabled",
-		//"adaptive",
 		0
 	};
 

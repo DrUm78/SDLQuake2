@@ -695,28 +695,11 @@ void GLimp_BeginFrame( float camera_seperation )
 #ifndef OPENGL
 static unsigned int last_blit_time = 0;
 
-#define VSYNC_PERIOD_MS   16    /* ~60Hz */
-#define VSYNC_ADAPT_SLACK 8     /* margin of tolerance before considering that we are "late" */
-
 void SWimp_EndFrame (void)
 {
-	if (vsync_available && vid_vsync->value > 0)
+	if (vsync_available && vid_vsync->value == 1)
 	{
 		qboolean do_wait = true;
-
-		if (vid_vsync->value == 2)   /* adaptive mode */
-		{
-			unsigned int now = Sys_Milliseconds();
-			unsigned int elapsed = now - last_blit_time;
-
-			/* The previous frame + game logic have already taken
-			   more than one VSync period (+ margin): we are running late;
-			   waiting for the *next* VSync on top of that is pointless—
-			   we prefer a bit of tearing over a framerate drop. */
-
-			if (elapsed >= VSYNC_PERIOD_MS + VSYNC_ADAPT_SLACK)
-				do_wait = false;
-		}
 
 		if (do_wait)
 		{
@@ -804,8 +787,8 @@ void SWimp_SetPalette( const unsigned char *palette )
 		return;
 
 	if ( !palette )
-	        palette = ( const unsigned char * ) sw_state.currentpalette;
- 
+		palette = ( const unsigned char * ) sw_state.currentpalette;
+
 	for (i = 0; i < 256; i++) {
 		colors[i].r = palette[i*4+0];
 		colors[i].g = palette[i*4+1];

@@ -64,7 +64,7 @@ keyname_t keynames[] =
 	{"ALT", K_ALT},
 	{"CTRL", K_CTRL},
 	{"SHIFT", K_SHIFT},
-	
+
 	{"F1", K_F1},
 	{"F2", K_F2},
 	{"F3", K_F3},
@@ -90,7 +90,6 @@ keyname_t keynames[] =
 	{"MOUSE3", K_MOUSE3},
 	{"MOUSE4", K_MOUSE4},
 	{"MOUSE5", K_MOUSE5},
-
 
 	{"JOY1", K_JOY1},
 	{"JOY2", K_JOY2},
@@ -163,7 +162,6 @@ keyname_t keynames_clean[] =
 	{"L3", K_KP_SLASH},
 	{"START", K_ENTER},
 	{"SELECT", K_ESCAPE},
-	{"X", K_SPACE},
 	{"R1", K_BACKSPACE},
 	{"R2", K_PGDN},
 	{"R3", K_KP_DEL},
@@ -171,11 +169,14 @@ keyname_t keynames_clean[] =
 	{"DOWN", K_DOWNARROW},
 	{"LEFT", K_LEFTARROW},
 	{"RIGHT", K_RIGHTARROW},
-	
-	{"B", K_ALT},
+
 	{"A", K_CTRL},
+	{"B", K_ALT},
+	{"X", K_SPACE},
 	{"Y", K_SHIFT},
-	
+
+	{"POWER", K_HOME},
+
 	{NULL,0}
 };
 

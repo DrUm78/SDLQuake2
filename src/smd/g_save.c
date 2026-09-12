@@ -3,6 +3,8 @@
 
 #define Function(f) {#f, f}
 
+#define SAVE_VERSION "Sep  6 2026"
+
 mmove_t mmove_reloc;
 
 field_t fields[] = {
@@ -881,7 +883,7 @@ void WriteGame (char *filename, qboolean autosave)
 		gi.error ("Couldn't open %s", filename);
 
 	memset (str, 0, sizeof(str));
-	strcpy (str, __DATE__);
+	strcpy (str, SAVE_VERSION);
 	fwrite (str, sizeof(str), 1, f);
 
 #ifdef SAVEGAME_USE_FUNCTION_TABLE
@@ -924,7 +926,7 @@ void ReadGame (char *filename)
 
 	fread (str, sizeof(str), 1, f);
 #ifndef SAVEGAME_USE_FUNCTION_TABLE
-	if (strcmp (str, __DATE__))
+	if (strcmp (str, SAVE_VERSION))
 	{
 		fclose (f);
 		gi.error ("Savegame from an older version.\n");

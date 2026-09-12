@@ -634,6 +634,8 @@ typedef enum {
 	F_EDICT,			// index on disk, pointer in memory
 	F_ITEM,				// index on disk, pointer in memory
 	F_CLIENT,			// index on disk, pointer in memory
+	F_FUNCTION,			// offset from InitGame on disk, absolute pointer in memory
+	F_MMOVE,			// offset from mmove_reloc on disk, absolute pointer in memory
 	F_IGNORE
 } fieldtype_t;
 

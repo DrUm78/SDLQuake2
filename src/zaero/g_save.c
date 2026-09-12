@@ -8,6 +8,9 @@ void InitTestItem(void);
 
 #endif
 
+#define SAVE_VERSION "Sep  6 2026"
+
+mmove_t mmove_reloc;
 
 field_t fields[] = {
 	{"classname", FOFS(classname), F_LSTRING},
@@ -122,6 +125,35 @@ field_t		savefields[] =
 	{"", FOFS(rideWith[0]), F_EDICT},
 	{"", FOFS(rideWith[1]), F_EDICT},
 	{"", FOFS(mteam), F_LSTRING},
+
+	// function pointers -- these were previously saved as raw
+	// absolute addresses, which is what caused the crash after
+	// restarting the app: the game module can be reloaded at a
+	// different base address, invalidating raw pointers. Saving
+	// them as offsets relative to InitGame/mmove_reloc fixes this.
+	{"", FOFS(prethink), F_FUNCTION},
+	{"", FOFS(think), F_FUNCTION},
+	{"", FOFS(blocked), F_FUNCTION},
+	{"", FOFS(touch), F_FUNCTION},
+	{"", FOFS(use), F_FUNCTION},
+	{"", FOFS(pain), F_FUNCTION},
+	{"", FOFS(die), F_FUNCTION},
+	{"", FOFS(moveinfo.endfunc), F_FUNCTION},
+	{"", FOFS(monsterinfo.stand), F_FUNCTION},
+	{"", FOFS(monsterinfo.idle), F_FUNCTION},
+	{"", FOFS(monsterinfo.search), F_FUNCTION},
+	{"", FOFS(monsterinfo.walk), F_FUNCTION},
+	{"", FOFS(monsterinfo.run), F_FUNCTION},
+	{"", FOFS(monsterinfo.dodge), F_FUNCTION},
+	{"", FOFS(monsterinfo.attack), F_FUNCTION},
+	{"", FOFS(monsterinfo.melee), F_FUNCTION},
+	{"", FOFS(monsterinfo.sight), F_FUNCTION},
+	{"", FOFS(monsterinfo.checkattack), F_FUNCTION},
+	{"", FOFS(monsterinfo.backwalk), F_FUNCTION},
+	{"", FOFS(monsterinfo.sidestepright), F_FUNCTION},
+	{"", FOFS(monsterinfo.sidestepleft), F_FUNCTION},
+	{"", FOFS(monsterinfo.currentmove), F_MMOVE},
+
 	{NULL, 0, F_INT}
 };
 
@@ -290,6 +322,25 @@ void WriteField1 (FILE *f, field_t *field, byte *base)
 			index = *(gitem_t **)p - itemlist;
 		*(int *)p = index;
 		break;
+	// relative to code segment: immune to the game module being
+	// loaded at a different base address across process restarts
+	// (ASLR / dlopen placement) — this is what was missing and
+	// caused raw absolute function pointers to be saved/restored.
+	case F_FUNCTION:
+		if (*(byte **)p == NULL)
+			index = 0;
+		else
+			index = (int)(*(byte **)p - ((byte *)InitGame));
+		*(int *)p = index;
+		break;
+	// relative to data segment
+	case F_MMOVE:
+		if (*(byte **)p == NULL)
+			index = 0;
+		else
+			index = (int)(*(byte **)p - (byte *)&mmove_reloc);
+		*(int *)p = index;
+		break;
 
 	default:
 		gi.error ("WriteEdict: unknown field type");
@@ -373,6 +424,20 @@ void ReadField (FILE *f, field_t *field, byte *base)
 			*(gitem_t **)p = NULL;
 		else
 			*(gitem_t **)p = &itemlist[index];
+		break;
+	case F_FUNCTION:
+		index = *(int *)p;
+		if ( index == 0 )
+			*(byte **)p = NULL;
+		else
+			*(byte **)p = ((byte *)InitGame) + index;
+		break;
+	case F_MMOVE:
+		index = *(int *)p;
+		if (index == 0)
+			*(byte **)p = NULL;
+		else
+			*(byte **)p = (byte *)&mmove_reloc + index;
 		break;
 
 	default:
@@ -460,7 +525,7 @@ void WriteGame (char *filename, qboolean autosave)
 		gi.error ("Couldn't open %s", filename);
 
 	memset (str, 0, sizeof(str));
-	strcpy (str, __DATE__);
+	strcpy (str, SAVE_VERSION);
 	fwrite (str, sizeof(str), 1, f);
 
 	game.autosaved = autosave;
@@ -488,7 +553,7 @@ void ReadGame (char *filename)
 		gi.error ("Couldn't open %s", filename);
 
 	fread (str, sizeof(str), 1, f);
-	if (strcmp (str, __DATE__))
+	if (strcmp (str, SAVE_VERSION))
 	{
 		fclose (f);
 		gi.error ("Savegame from an older version.\n");

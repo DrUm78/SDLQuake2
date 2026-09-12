@@ -653,7 +653,7 @@ char *bindnames[][2] =
 {"invprev",			"prev item"},
 {"invnext",			"next item"},
 
-{"cmd help", 		"help computer" }, 
+{"cmd help", 		"help computer" },
 { 0, 0 }
 };
 
@@ -662,7 +662,8 @@ static int		bind_grab;
 
 static menuframework_s	s_keys_menu;
 static menuaction_s		s_keys_attack_action;
-static menuaction_s		s_keys_change_weapon_action;
+static menuaction_s		s_keys_next_weapon_action;
+static menuaction_s		s_keys_prev_weapon_action;
 static menuaction_s		s_keys_walk_forward_action;
 static menuaction_s		s_keys_backpedal_action;
 static menuaction_s		s_keys_turn_left_action;
@@ -819,13 +820,21 @@ static void Keys_MenuInit( void )
 	s_keys_attack_action.generic.localdata[0] = i;
 	s_keys_attack_action.generic.name	= bindnames[s_keys_attack_action.generic.localdata[0]][1];
 
-	s_keys_change_weapon_action.generic.type	= MTYPE_ACTION;
-	s_keys_change_weapon_action.generic.flags  = QMF_GRAYED;
-	s_keys_change_weapon_action.generic.x		= 0;
-	s_keys_change_weapon_action.generic.y		= y += 9;
-	s_keys_change_weapon_action.generic.ownerdraw = DrawKeyBindingFunc;
-	s_keys_change_weapon_action.generic.localdata[0] = ++i;
-	s_keys_change_weapon_action.generic.name	= bindnames[s_keys_change_weapon_action.generic.localdata[0]][1];
+	s_keys_next_weapon_action.generic.type	= MTYPE_ACTION;
+	s_keys_next_weapon_action.generic.flags  = QMF_GRAYED;
+	s_keys_next_weapon_action.generic.x		= 0;
+	s_keys_next_weapon_action.generic.y		= y += 9;
+	s_keys_next_weapon_action.generic.ownerdraw = DrawKeyBindingFunc;
+	s_keys_next_weapon_action.generic.localdata[0] = ++i;
+	s_keys_next_weapon_action.generic.name	= bindnames[s_keys_next_weapon_action.generic.localdata[0]][1];
+
+	s_keys_prev_weapon_action.generic.type	= MTYPE_ACTION;
+	s_keys_prev_weapon_action.generic.flags  = QMF_GRAYED;
+	s_keys_prev_weapon_action.generic.x		= 0;
+	s_keys_prev_weapon_action.generic.y		= y += 9;
+	s_keys_prev_weapon_action.generic.ownerdraw = DrawKeyBindingFunc;
+	s_keys_prev_weapon_action.generic.localdata[0] = ++i;
+	s_keys_prev_weapon_action.generic.name	= bindnames[s_keys_prev_weapon_action.generic.localdata[0]][1];
 
 	s_keys_walk_forward_action.generic.type	= MTYPE_ACTION;
 	s_keys_walk_forward_action.generic.flags  = QMF_GRAYED;
@@ -996,7 +1005,8 @@ static void Keys_MenuInit( void )
 	s_keys_help_computer_action.generic.name	= bindnames[s_keys_help_computer_action.generic.localdata[0]][1];
 
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_attack_action );
-	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_change_weapon_action );
+	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_next_weapon_action );
+	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_prev_weapon_action );
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_walk_forward_action );
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_backpedal_action );
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_turn_left_action );
@@ -1301,20 +1311,6 @@ static void UpdateSoundQualityFunc( void *unused )
 
 void Options_MenuInit( void )
 {
-	static const char *cd_music_items[] =
-	{
-		"disabled",
-		"enabled",
-		0
-	};
-
-	static const char *cd_shuffle[] =
-	  {
-	    "disabled",
-	    "enabled",
-	    0
-	  };
-
 	static const char *quality_items[] =
 	{
 		"low", "high", 0
@@ -1451,7 +1447,7 @@ void Options_MenuInit( void )
 
 	s_options_crosshair_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_crosshair_box.generic.x	= 0;
-	s_options_crosshair_box.generic.y	= 120;
+	s_options_crosshair_box.generic.y	= 90;
 	s_options_crosshair_box.generic.name	= "crosshair";
 	s_options_crosshair_box.generic.callback = CrosshairFunc;
 	s_options_crosshair_box.itemnames = crosshair_names;
@@ -1500,9 +1496,9 @@ void Options_MenuInit( void )
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_dpad_sensitivity_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
-	Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
+	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookspring_box );
+	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_lookstrafe_box );
+	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
 	//Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
