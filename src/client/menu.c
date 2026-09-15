@@ -2648,6 +2648,17 @@ void StartServerActionFunc( void *self )
 	}
 
 	M_ForceMenuOff ();
+
+	if (mapnames)
+	{
+		int i;
+
+		for (i = 0; i < nummaps; i++)
+			free(mapnames[i]);
+		free(mapnames);
+	}
+	mapnames = 0;
+	nummaps = 0;
 }
 
 void StartServer_MenuInit( void )

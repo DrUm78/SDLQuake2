@@ -650,16 +650,20 @@ const char *VID_MenuKey( int key )
 	case K_UPARROW:
 		m->cursor--;
 		Menu_AdjustCursor( m, -1 );
+		sound = "misc/menu2.wav";
 		break;
 	case K_DOWNARROW:
 		m->cursor++;
 		Menu_AdjustCursor( m, 1 );
+		sound = "misc/menu2.wav";
 		break;
 	case K_LEFTARROW:
 		Menu_SlideItem( m, -1 );
+		sound = "misc/menu2.wav";
 		break;
 	case K_RIGHTARROW:
 		Menu_SlideItem( m, 1 );
+		sound = "misc/menu2.wav";
 		break;
 	case K_CTRL:
 		Menu_SelectItem( m );
