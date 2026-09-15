@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
 #include <unistd.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
+#include <SDL/SDL_mixer.h>
 
 #define SCREEN_WIDTH   320
 #define SCREEN_HEIGHT  240
@@ -34,6 +34,9 @@ int selected_index = 0;
 int pending_launch_index = -1;
 SDL_Surface *screen = NULL;
 TTF_Font *font = NULL;
+Mix_Chunk *cursor_sound1 = NULL;
+Mix_Chunk *cursor_sound2 = NULL;
+Mix_Chunk *cursor_sound3 = NULL;
 
 // Autofire variables
 Uint32 key_press_time = 0;
@@ -44,11 +47,8 @@ int key_held_down = 0;
 
 // Error handling variables
 int error_state = 0;          // 0 = no error, 1 = error detected
-int info_state = 0;           // 0 = no message, 1 = message
+int warning_state = 0;        // 0 = no message, 1 = message
 char error_message[256] = ""; // Custom error message
-char info_message1[256] = ""; // Custom info message 1
-char info_message2[256] = ""; // Custom info message 2
-char info_message3[256] = ""; // Custom info message 3
 
 // Check if a file or directory exists
 int file_or_dir_exists(const char *path) {
@@ -57,7 +57,7 @@ int file_or_dir_exists(const char *path) {
 
 // Initialize SDL and resources
 int init_sdl() {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
         return 0;
     }
@@ -77,11 +77,20 @@ int init_sdl() {
         return 0;
     }
 
-    if (file_or_dir_exists("../../opk/dpquake_.ttf")) {
-        font = TTF_OpenFont("../../opk/dpquake_.ttf", 18);
-    } else {
-        font = TTF_OpenFont("dpquake_.ttf", 18);
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) < 0) {
+        fprintf(stderr, "Mix_OpenAudio error: %s\n", Mix_GetError());
+        return 0;
     }
+
+    Mix_AllocateChannels(16);
+    cursor_sound1 = Mix_LoadWAV("menu1.wav");
+    cursor_sound2 = Mix_LoadWAV("menu2.wav");
+    cursor_sound3 = Mix_LoadWAV("menu3.wav");
+    if (!cursor_sound1 || !cursor_sound2 || !cursor_sound3) {
+        fprintf(stderr, "Mix_LoadWAV error: %s\n", Mix_GetError());
+    }
+
+    font = TTF_OpenFont("dpquake_.ttf", 18);
     TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
     TTF_SetFontStyle(font, TTF_STYLE_BOLD);
     if (!font) {
@@ -112,24 +121,28 @@ int get_centered_x(const char *text) {
 void render_files() {
     SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
 
-    SDL_Color white = {255, 255, 255};
-    SDL_Color red   = {255, 0, 0};
-    SDL_Color black = {0, 0, 0};
+    SDL_Color white  = {255, 255, 255};
+    SDL_Color orange = {255, 100, 0};
+    SDL_Color red    = {255, 0, 0};
+    SDL_Color black  = {0, 0, 0};
 
     if (error_state) {
         // Display error screen
         draw_text(get_centered_x("Error"), SCREEN_HEIGHT / 2 - 50, "Error", red, black);
         draw_text(get_centered_x(error_message), SCREEN_HEIGHT / 2 - 20, error_message, red, black);
-        draw_text(get_centered_x("press b to go back"), SCREEN_HEIGHT / 2 + 20, "press b to go back", white, black);
-    } else if (info_state) {
+        draw_text(get_centered_x("to run this mission pack"), SCREEN_HEIGHT / 2, "to run this mission pack", red, black);
+        draw_text(get_centered_x("press b to go back"), SCREEN_HEIGHT / 2 + 40, "press b to go back", white, black);
+    } else if (warning_state) {
         // Display demo screen
-        draw_text(get_centered_x(info_message1), SCREEN_HEIGHT / 2 - 50, info_message1, white, black);
-        draw_text(get_centered_x(info_message2), SCREEN_HEIGHT / 2 - 20, info_message2, white, black);
-        draw_text(get_centered_x(info_message3), SCREEN_HEIGHT / 2 + 20, info_message3, white, black);
+        draw_text(get_centered_x("Warning"), SCREEN_HEIGHT / 2 - 50, "Warning", orange, black);
+        draw_text(get_centered_x("You need 'baseq2/pak0.pak'"), SCREEN_HEIGHT / 2 - 20, "You need 'baseq2/pak0.pak'", orange, black);
+        draw_text(get_centered_x("to run the full game"), SCREEN_HEIGHT / 2, "to run the full game", orange, black);
+        draw_text(get_centered_x("press a to play demo"), SCREEN_HEIGHT / 2 + 40, "press a to play demo", white, black);
+        draw_text(get_centered_x("or b to go back"), SCREEN_HEIGHT / 2 + 60, "or b to go back", white, black);
     } else {
         // Display normal menu
         int y = 55;
-        draw_text(get_centered_x("Select Your Game"), 20, "Select Your Game", white, black);
+        draw_text(get_centered_x("Select your game"), 20, "Select your game", white, black);
 
         for (int i = 0; i < file_count; i++) {
             if (i == selected_index) {
@@ -150,11 +163,8 @@ void launch_file(int index) {
     // Demo or full version?
     if (strcmp(menu_entries[index].display_name, "Quake II") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/baseq2/pak0.pak")) {
-            info_state = 1;
+            warning_state = 1;
             pending_launch_index = index;
-            strncpy(info_message1, "Info", sizeof(info_message1) - 1);
-            strncpy(info_message2, "baseq2/pak0.pak Not Found", sizeof(info_message2) - 1);
-            strncpy(info_message3, "press a to launch demo", sizeof(info_message3) - 1);
             return;
         } else {
             SDL_Quit();
@@ -171,7 +181,7 @@ void launch_file(int index) {
         || strcmp(menu_entries[index].display_name, "ThreeWave Capture The Flag") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/baseq2/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "baseq2/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'baseq2/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -180,7 +190,7 @@ void launch_file(int index) {
     if (strcmp(menu_entries[index].display_name, "The Reckoning") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/xatrix/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "xatrix/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'xatrix/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -189,7 +199,7 @@ void launch_file(int index) {
     if (strcmp(menu_entries[index].display_name, "Ground Zero") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/rogue/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "rogue/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'rogue/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -198,7 +208,7 @@ void launch_file(int index) {
     if (strcmp(menu_entries[index].display_name, "Zaero") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/zaero/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "zaero/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'zaero/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -207,7 +217,7 @@ void launch_file(int index) {
     if (strcmp(menu_entries[index].display_name, "Slight Mechanical Destruction") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/smd/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "smd/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'smd/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -216,7 +226,7 @@ void launch_file(int index) {
     if (strcmp(menu_entries[index].display_name, "ThreeWave Capture The Flag") == 0) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/ctf/pak0.pak")) {
             error_state = 1;
-            strncpy(error_message, "ctf/pak0.pak Missing!", sizeof(error_message) - 1);
+            strncpy(error_message, "You need 'ctf/pak0.pak'", sizeof(error_message) - 1);
             return;
         }
     }
@@ -260,17 +270,19 @@ int main(int argc, char *argv[]) {
                             error_state = 0;   // Reset error state
                             key_held_up = 0;   // Reset autofire for UP
                             key_held_down = 0; // Reset autofire for DOWN
+                            if (cursor_sound3) Mix_PlayChannel(-1, cursor_sound3, 0);
                         }
-                    } else if (info_state) {
+                    } else if (warning_state) {
                         if (event.key.keysym.sym == SDLK_LCTRL) {
                             // Launch the binary stored in pending_launch_index
                             SDL_Quit();
                             system(menu_entries[pending_launch_index].command);
                             exit(0);
-                        /*} else if (event.key.keysym.sym == SDLK_LALT) {
+                        } else if (event.key.keysym.sym == SDLK_LALT) {
                             // Back to menu if B is pressed
-                            info_state = 0;
-                            pending_launch_index = -1;*/
+                            warning_state = 0;
+                            pending_launch_index = -1;
+                            if (cursor_sound3) Mix_PlayChannel(-1, cursor_sound3, 0);
                         }
                     } else {
                         // Normal mode
@@ -279,14 +291,17 @@ int main(int argc, char *argv[]) {
                                 selected_index = (selected_index == 0) ? file_count - 1 : selected_index - 1;
                                 key_held_up = 1;
                                 key_press_time = current_time;
+                                if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                                 break;
                             case SDLK_DOWN:
                                 selected_index = (selected_index == file_count - 1) ? 0 : selected_index + 1;
                                 key_held_down = 1;
                                 key_press_time = current_time;
+                                if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                                 break;
                             case SDLK_LCTRL:
                                 launch_file(selected_index);
+                                if (cursor_sound1) Mix_PlayChannel(-1, cursor_sound1, 0);
                                 break;
                             case SDLK_LALT:
                                 running = 0;
@@ -316,6 +331,7 @@ int main(int argc, char *argv[]) {
                 if (held_time > key_repeat_delay &&
                     (held_time - key_repeat_delay) % key_repeat_interval < delta_time) {
                     selected_index = (selected_index == 0) ? file_count - 1 : selected_index - 1;
+                    if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                 }
             }
 
@@ -324,6 +340,7 @@ int main(int argc, char *argv[]) {
                 if (held_time > key_repeat_delay &&
                     (held_time - key_repeat_delay) % key_repeat_interval < delta_time) {
                     selected_index = (selected_index == file_count - 1) ? 0 : selected_index + 1;
+                    if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                 }
             }
         }
@@ -332,6 +349,10 @@ int main(int argc, char *argv[]) {
     }
 
     TTF_CloseFont(font);
+    if (cursor_sound1) Mix_FreeChunk(cursor_sound1);
+    if (cursor_sound2) Mix_FreeChunk(cursor_sound2);
+    if (cursor_sound3) Mix_FreeChunk(cursor_sound3);
+    Mix_CloseAudio();
     TTF_Quit();
     SDL_Quit();
     return 0;
