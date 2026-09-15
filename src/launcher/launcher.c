@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
+#include <SDL/SDL_mixer.h>
 
 #define SCREEN_WIDTH   320
 #define SCREEN_HEIGHT  240
@@ -34,6 +35,9 @@ int selected_index = 0;
 int pending_launch_index = -1;
 SDL_Surface *screen = NULL;
 TTF_Font *font = NULL;
+Mix_Chunk *cursor_sound1 = NULL;
+Mix_Chunk *cursor_sound2 = NULL;
+Mix_Chunk *cursor_sound3 = NULL;
 
 // Autofire variables
 Uint32 key_press_time = 0;
@@ -49,6 +53,7 @@ char error_message[256] = ""; // Custom error message
 char info_message1[256] = ""; // Custom info message 1
 char info_message2[256] = ""; // Custom info message 2
 char info_message3[256] = ""; // Custom info message 3
+char info_message4[256] = ""; // Custom info message 4
 
 // Check if a file or directory exists
 int file_or_dir_exists(const char *path) {
@@ -57,7 +62,7 @@ int file_or_dir_exists(const char *path) {
 
 // Initialize SDL and resources
 int init_sdl() {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         fprintf(stderr, "SDL_Init error: %s\n", SDL_GetError());
         return 0;
     }
@@ -77,11 +82,23 @@ int init_sdl() {
         return 0;
     }
 
-    if (file_or_dir_exists("../../opk/dpquake_.ttf")) {
-        font = TTF_OpenFont("../../opk/dpquake_.ttf", 18);
-    } else {
-        font = TTF_OpenFont("dpquake_.ttf", 18);
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) < 0) {
+        fprintf(stderr, "Mix_OpenAudio error: %s\n", Mix_GetError());
+        return 0;
     }
+
+    Mix_AllocateChannels(16);
+    cursor_sound1 = Mix_LoadWAV("menu1.wav");
+    cursor_sound2 = Mix_LoadWAV("menu2.wav");
+    cursor_sound3 = Mix_LoadWAV("menu3.wav");
+    Mix_VolumeChunk(cursor_sound1, 32);
+    Mix_VolumeChunk(cursor_sound2, 32);
+    Mix_VolumeChunk(cursor_sound3, 32);
+    if (!cursor_sound1 || !cursor_sound2 || !cursor_sound3) {
+        fprintf(stderr, "Mix_LoadWAV error: %s\n", Mix_GetError());
+    }
+
+    font = TTF_OpenFont("dpquake_.ttf", 18);
     TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
     TTF_SetFontStyle(font, TTF_STYLE_BOLD);
     if (!font) {
@@ -126,6 +143,7 @@ void render_files() {
         draw_text(get_centered_x(info_message1), SCREEN_HEIGHT / 2 - 50, info_message1, white, black);
         draw_text(get_centered_x(info_message2), SCREEN_HEIGHT / 2 - 20, info_message2, white, black);
         draw_text(get_centered_x(info_message3), SCREEN_HEIGHT / 2 + 20, info_message3, white, black);
+        draw_text(get_centered_x(info_message4), SCREEN_HEIGHT / 2 + 40, info_message4, white, black);
     } else {
         // Display normal menu
         int y = 55;
@@ -152,9 +170,10 @@ void launch_file(int index) {
         if (!file_or_dir_exists("/usr/local/home/.quake2/baseq2/pak0.pak")) {
             info_state = 1;
             pending_launch_index = index;
-            strncpy(info_message1, "Info", sizeof(info_message1) - 1);
+            strncpy(info_message1, "Warning", sizeof(info_message1) - 1);
             strncpy(info_message2, "baseq2/pak0.pak Not Found", sizeof(info_message2) - 1);
             strncpy(info_message3, "press a to launch demo", sizeof(info_message3) - 1);
+            strncpy(info_message4, "or b to go back", sizeof(info_message4) - 1);
             return;
         } else {
             SDL_Quit();
@@ -260,6 +279,7 @@ int main(int argc, char *argv[]) {
                             error_state = 0;   // Reset error state
                             key_held_up = 0;   // Reset autofire for UP
                             key_held_down = 0; // Reset autofire for DOWN
+                            if (cursor_sound3) Mix_PlayChannel(-1, cursor_sound3, 0);
                         }
                     } else if (info_state) {
                         if (event.key.keysym.sym == SDLK_LCTRL) {
@@ -267,10 +287,11 @@ int main(int argc, char *argv[]) {
                             SDL_Quit();
                             system(menu_entries[pending_launch_index].command);
                             exit(0);
-                        /*} else if (event.key.keysym.sym == SDLK_LALT) {
+                        } else if (event.key.keysym.sym == SDLK_LALT) {
                             // Back to menu if B is pressed
                             info_state = 0;
-                            pending_launch_index = -1;*/
+                            pending_launch_index = -1;
+                            if (cursor_sound3) Mix_PlayChannel(-1, cursor_sound3, 0);
                         }
                     } else {
                         // Normal mode
@@ -279,14 +300,17 @@ int main(int argc, char *argv[]) {
                                 selected_index = (selected_index == 0) ? file_count - 1 : selected_index - 1;
                                 key_held_up = 1;
                                 key_press_time = current_time;
+                                if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                                 break;
                             case SDLK_DOWN:
                                 selected_index = (selected_index == file_count - 1) ? 0 : selected_index + 1;
                                 key_held_down = 1;
                                 key_press_time = current_time;
+                                if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                                 break;
                             case SDLK_LCTRL:
                                 launch_file(selected_index);
+                                if (cursor_sound1) Mix_PlayChannel(-1, cursor_sound1, 0);
                                 break;
                             case SDLK_LALT:
                                 running = 0;
@@ -316,6 +340,7 @@ int main(int argc, char *argv[]) {
                 if (held_time > key_repeat_delay &&
                     (held_time - key_repeat_delay) % key_repeat_interval < delta_time) {
                     selected_index = (selected_index == 0) ? file_count - 1 : selected_index - 1;
+                    if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                 }
             }
 
@@ -324,6 +349,7 @@ int main(int argc, char *argv[]) {
                 if (held_time > key_repeat_delay &&
                     (held_time - key_repeat_delay) % key_repeat_interval < delta_time) {
                     selected_index = (selected_index == file_count - 1) ? 0 : selected_index + 1;
+                    if (cursor_sound2) Mix_PlayChannel(-1, cursor_sound2, 0);
                 }
             }
         }
@@ -332,6 +358,10 @@ int main(int argc, char *argv[]) {
     }
 
     TTF_CloseFont(font);
+    if (cursor_sound1) Mix_FreeChunk(cursor_sound1);
+    if (cursor_sound2) Mix_FreeChunk(cursor_sound2);
+    if (cursor_sound3) Mix_FreeChunk(cursor_sound3);
+    Mix_CloseAudio();
     TTF_Quit();
     SDL_Quit();
     return 0;

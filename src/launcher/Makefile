@@ -3,7 +3,7 @@ CC			= /opt/gcw0-toolchain/usr/bin/mipsel-gcw0-linux-uclibc-gcc
 STRIP		= /opt/gcw0-toolchain/usr/bin/mipsel-gcw0-linux-uclibc-strip
 
 OBJS		= launcher.o
-LDFLAGS		= -lSDL -lSDL_ttf
+LDFLAGS		= -lSDL -lSDL_ttf -lSDL_mixer
 CFLAGS		= -std=gnu99
 
 # Rules to make executable
