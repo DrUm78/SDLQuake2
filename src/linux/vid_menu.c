@@ -62,6 +62,8 @@ static cvar_t *gl_ext_palettedtexture;
 
 static cvar_t *sw_mode;
 static cvar_t *sw_stipplealpha;
+static cvar_t *r_coloredlights;
+static cvar_t *r_lightsaturation;
 
 static cvar_t *_windowed_mouse;
 
@@ -91,6 +93,7 @@ static menuslider_s		s_brightness_slider[2];
 static menulist_s  		s_fs_box[2];
 static menulist_s  		s_stipple_box;
 static menulist_s  		s_vid_vsync;
+static menulist_s  		s_vid_kolorsoft;
 static menulist_s  		s_draw_fps;
 static menulist_s  		s_draw_clock;
 static menulist_s  		s_paletted_texture_box;
@@ -152,6 +155,22 @@ static void VsyncCallback( void *unused )
 	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
 }
 
+static void KolorSoftCallback( void *unused )
+{
+	if ( s_vid_kolorsoft.curvalue )
+	{
+		Cvar_SetValue( "r_lightsaturation", 1 );
+		Cvar_SetValue( "r_coloredlights",   2 );
+		vid_ref->modified = true;
+	}
+	else
+	{
+		Cvar_SetValue( "r_lightsaturation", 0 );
+		Cvar_SetValue( "r_coloredlights",   0 );
+		vid_ref->modified = true;
+	}
+}
+
 static void DrawFPSCallback( void *unused )
 {
 	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
@@ -165,9 +184,11 @@ static void DrawClockCallback( void *unused )
 static void ResetDefaults( void *unused )
 {
 	Cvar_SetValue( "viewsize", 100 );
-	Cvar_SetValue( "vid_gamma", 0.7 );
+	Cvar_SetValue( "vid_gamma", 0.9 );
 	Cvar_SetValue( "sw_stipplealpha", 0 );
 	Cvar_SetValue( "vid_vsync", 0 );
+	Cvar_SetValue( "r_lightsaturation", 0 );
+	Cvar_SetValue( "r_coloredlights", 0 );
 	Cvar_SetValue( "cl_drawfps", 0 );
 	Cvar_SetValue( "cl_drawclock", 0 );
 
@@ -202,6 +223,19 @@ static void ApplyChanges( void *unused )
 	Cvar_SetValue( "sw_mode", s_mode_list[SOFTWARE_MENU].curvalue );
 	Cvar_SetValue( "gl_mode", s_mode_list[OPENGL_MENU].curvalue );
 	Cvar_SetValue( "_windowed_mouse", s_windowed_mouse.curvalue);
+
+	if ( s_vid_kolorsoft.curvalue )
+	{
+		Cvar_SetValue( "r_lightsaturation", 1 );
+		Cvar_SetValue( "r_coloredlights", 2 );
+		vid_ref->modified = true;
+	}
+	else
+	{
+		Cvar_SetValue( "r_lightsaturation", 0 );
+		Cvar_SetValue( "r_coloredlights", 0 );
+		vid_ref->modified = true;
+	}
 
 	/*
 	** must use an if here (instead of a switch), since the REF_'s are now variables
@@ -309,13 +343,6 @@ void VID_MenuInit( void )
 		0
 	};
 
-	static const char *vsync_names[] =
-	{
-		"disabled",
-		"enabled",
-		0
-	};
-
 	/* make sure these are invalided before showing the menu again */
 	REF_SOFT    = NUMBER_OF_REFS;
 	REF_SOFTX11 = NUMBER_OF_REFS;
@@ -369,6 +396,11 @@ void VID_MenuInit( void )
 
 	if ( !vid_vsync )
 		vid_vsync = Cvar_Get( "vid_vsync", "0", CVAR_ARCHIVE );
+
+	if ( !r_coloredlights )
+		r_coloredlights = Cvar_Get( "r_coloredlights", "0", CVAR_ARCHIVE );
+	if ( !r_lightsaturation )
+		r_lightsaturation = Cvar_Get( "r_lightsaturation", "0", CVAR_ARCHIVE );
 
 	if ( !cl_drawfps )
 		cl_drawfps = Cvar_Get( "cl_drawfps", "0", CVAR_ARCHIVE );
@@ -505,11 +537,19 @@ void VID_MenuInit( void )
 	s_vid_vsync.generic.name	= "vertical sync";
 	s_vid_vsync.generic.callback = VsyncCallback;
 	s_vid_vsync.curvalue = vid_vsync->value;
-	s_vid_vsync.itemnames = vsync_names;
+	s_vid_vsync.itemnames = yesno_names;
+
+	s_vid_kolorsoft.generic.type = MTYPE_SPINCONTROL;
+	s_vid_kolorsoft.generic.x	= 0;
+	s_vid_kolorsoft.generic.y	= 60;
+	s_vid_kolorsoft.generic.name	= "rgb lighting";
+	s_vid_kolorsoft.generic.callback = KolorSoftCallback;
+	s_vid_kolorsoft.curvalue = ( r_coloredlights->value > 0 ) ? 1 : 0;
+	s_vid_kolorsoft.itemnames = yesno_names;
 
 	s_draw_fps.generic.type = MTYPE_SPINCONTROL;
 	s_draw_fps.generic.x	= 0;
-	s_draw_fps.generic.y	= 60;
+	s_draw_fps.generic.y	= 70;
 	s_draw_fps.generic.name	= "show fps";
 	s_draw_fps.generic.callback = DrawFPSCallback;
 	s_draw_fps.curvalue = cl_drawfps->value;
@@ -517,7 +557,7 @@ void VID_MenuInit( void )
 
 	s_draw_clock.generic.type = MTYPE_SPINCONTROL;
 	s_draw_clock.generic.x	= 0;
-	s_draw_clock.generic.y	= 70;
+	s_draw_clock.generic.y	= 80;
 	s_draw_clock.generic.name	= "show clock";
 	s_draw_clock.generic.callback = DrawClockCallback;
 	s_draw_clock.curvalue = cl_drawclock->value;
@@ -558,6 +598,7 @@ void VID_MenuInit( void )
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_fs_box[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_stipple_box );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_vsync );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_kolorsoft );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_fps );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_clock );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_windowed_mouse );

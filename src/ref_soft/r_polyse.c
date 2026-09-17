@@ -42,6 +42,9 @@ typedef struct {
 	int				count;
 	byte			*ptex;
 	int				sfrac, tfrac, light, zi;
+#ifdef COLMODEL
+	int				lightr, lightg, lightb; // leilei - colored lighting
+#endif
 } spanpackage_t;
 
 typedef struct {
@@ -58,7 +61,7 @@ typedef struct {
 
 aliastriangleparms_t aliastriangleparms;
 
-int	r_p0[6], r_p1[6], r_p2[6];
+int	r_p0[9], r_p1[9], r_p2[9];
 
 byte		*d_pcolormap;
 
@@ -86,6 +89,9 @@ edgetable	edgetables[12] = {
 int				a_sstepxfrac, a_tstepxfrac, r_lstepx, a_ststepxwhole;
 int				r_sstepx, r_tstepx, r_lstepy, r_sstepy, r_tstepy;
 int				r_zistepx, r_zistepy;
+int				r_lrstepx, r_lrstepy;
+int				r_lgstepx, r_lgstepy;
+int				r_lbstepx, r_lbstepy;
 int				d_aspancount, d_countextrastep;
 
 spanpackage_t			*a_spans;
@@ -100,6 +106,13 @@ int						d_lightbasestep, d_pdestbasestep, d_ptexbasestep;
 int						d_sfracbasestep, d_tfracbasestep;
 int						d_ziextrastep, d_zibasestep;
 int						d_pzextrastep, d_pzbasestep;
+
+// leilei - colored lighting
+
+int						d_lightbasestepr, d_lightbasestepg, d_lightbasestepb;
+int						d_lightextrastepr, d_lightextrastepg, d_lightextrastepb;
+int						d_lightr, d_lightg, d_lightb;
+
 
 typedef struct {
 	int		quotient;
@@ -116,9 +129,10 @@ byte	*skinstart;
 
 void	(*d_pdrawspans)(spanpackage_t *pspanpackage);
 
-void R_PolysetDrawSpans8_33 (spanpackage_t *pspanpackage);
-void R_PolysetDrawSpans8_66 (spanpackage_t *pspanpackage);
-void R_PolysetDrawSpans8_Opaque (spanpackage_t *pspanpackage);
+void R_PolysetDrawSpans8_33(spanpackage_t *pspanpackage);
+void R_PolysetDrawSpans8_66(spanpackage_t *pspanpackage);
+//void R_PolysetDrawSpans8_Opaque(spanpackage_t *pspanpackage);
+void R_PolysetDrawSpans8_Opaque_Coloured(spanpackage_t *pspanpackage);
 
 void R_PolysetDrawThreshSpans8 (spanpackage_t *pspanpackage);
 void R_PolysetCalcGradients (int skinwidth);
@@ -252,8 +266,19 @@ void R_DrawTriangle( void )
 		r_p2[4] = aliastriangleparms.c->l;
 		r_p2[5] = aliastriangleparms.c->zi;
 
-		R_PolysetSetEdgeTable ();
-		R_RasterizeAliasPolySmooth ();
+		// i crash fixme  //...qb: increased array sizes
+		r_p0[6] = aliastriangleparms.a->l;		// lightr
+		r_p0[7] = aliastriangleparms.a->l;		// lightg
+		r_p0[8] = aliastriangleparms.a->l;		// lightb
+		r_p1[6] = aliastriangleparms.b->l;		// lightr
+		r_p1[7] = aliastriangleparms.b->l;		// lightg
+		r_p1[8] = aliastriangleparms.b->l;		// lightb
+		r_p2[6] = aliastriangleparms.c->l;		// lightr
+		r_p2[7] = aliastriangleparms.c->l;		// lightg
+		r_p2[8] = aliastriangleparms.c->l;		// lightb
+
+		R_PolysetSetEdgeTable();
+		R_RasterizeAliasPolySmooth();
 	}
 }
 
@@ -277,6 +302,11 @@ void R_PolysetScanLeftEdge_C(int height)
 
 	// FIXME: need to clamp l, s, t, at both ends?
 		d_pedgespanpackage->light = d_light;
+#ifdef COLMODEL
+		d_pedgespanpackage->lightr = d_lightr;
+		d_pedgespanpackage->lightg = d_lightg;
+		d_pedgespanpackage->lightb = d_lightb;
+#endif
 		d_pedgespanpackage->zi = d_zi;
 
 		d_pedgespanpackage++;
@@ -301,6 +331,11 @@ void R_PolysetScanLeftEdge_C(int height)
 			d_light += d_lightextrastep;
 			d_zi += d_ziextrastep;
 			errorterm -= erroradjustdown;
+#ifdef COLMODEL
+			d_lightr += d_lightextrastepr;
+			d_lightg += d_lightextrastepg;
+			d_lightb += d_lightextrastepb;
+#endif
 		}
 		else
 		{
@@ -318,6 +353,11 @@ void R_PolysetScanLeftEdge_C(int height)
 				d_tfrac &= 0xFFFF;
 			}
 			d_light += d_lightbasestep;
+#ifdef COLMODEL
+			d_lightr += d_lightbasestepr;
+			d_lightg += d_lightbasestepg;
+			d_lightb += d_lightbasestepb;
+#endif
 			d_zi += d_zibasestep;
 		}
 	} while (--height);
@@ -333,8 +373,7 @@ quotient must fit in 32 bits.
 FIXME: GET RID OF THIS! (FloorDivMod)
 ====================
 */
-void FloorDivMod (float numer, float denom, int *quotient,
-		int *rem)
+void	FloorDivMod(float numer, float denom, int *quotient, int *rem)
 {
 	int		q, r;
 	float	x;
@@ -411,6 +450,7 @@ void R_PolysetSetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
 R_PolysetCalcGradients
 ================
 */
+//qb: from Frank Sapone
 #if id386 && !defined __linux__ && !defined __FreeBSD__
 void R_PolysetCalcGradients( int skinwidth )
 {
@@ -504,131 +544,262 @@ void R_PolysetCalcGradients( int skinwidth )
 	__asm fxch  st(1)               ; t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
 	__asm fmul  xstepdenominv       ; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
 	__asm fxch  st(1)
-	__asm fmul  ystepdenominv       ; r_lstepy | r_lstepx
-	__asm fxch  st(1)               ; r_lstepx | r_lstepy
-	__asm fistp dword ptr [r_lstepx]
-	__asm fistp dword ptr [r_lstepy]
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_lstepx]
+		__asm fistp dword ptr[r_lstepy]
+		/* FS: Start */
+		/*
+		t0 = r_p0[6] - r_p2[6];
+		t1 = r_p1[6] - r_p2[6];
+		r_lrstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+		r_lrstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+		*/
+		__asm fild  dword ptr d_xdenom; d_xdenom
+	__asm fdivr one; 1 / d_xdenom
+	__asm fst   xstepdenominv;
+	__asm fmul  negative_one; -(1 / d_xdenom)
 
-	/*
-	** put FPU back into extended precision chop mode
-	*/
-	__asm fldcw word ptr [fpu_chop_cw]
+	__asm mov   eax, dword ptr[r_p0 + 24] // 6
+		__asm mov   ebx, dword ptr[r_p1 + 24]
+		__asm sub   eax, dword ptr[r_p2 + 24]
+		__asm sub   ebx, dword ptr[r_p2 + 24]
 
-	/*
-	t0 = r_p0[2] - r_p2[2];
-	t1 = r_p1[2] - r_p2[2];
-	r_sstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_sstepy = (int)((t1 * p00_minus_p20 - t0* p10_minus_p20) *
-			ystepdenominv);
-	*/
-	__asm mov eax, dword ptr [r_p0+8]
-	__asm mov ebx, dword ptr [r_p1+8]
-	__asm sub eax, dword ptr [r_p2+8]
-	__asm sub ebx, dword ptr [r_p2+8]
-	__asm mov   t0_int, eax
-	__asm mov   t1_int, ebx
-	__asm fild  t0_int              ; t0
-	__asm fild  t1_int              ; t1 | t0
-	__asm fxch  st(1)               ; t0 | t1
-	__asm fstp  t0                  ; t1
-	__asm fst   t1                  ; (empty)
-
-	__asm fmul  p01_minus_p21       ; t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p01_minus_p21
-	__asm fmul  p11_minus_p21       ; t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t1                  ; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p00_minus_p20       ; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p10_minus_p20       ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fxch  st(2)               ; t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
-	__asm fsubp st(3), st           ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fsubrp st(1), st           ; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fxch  st(1)               ; t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
-	__asm fmul  xstepdenominv       ; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
-	__asm fxch  st(1)
-	__asm fmul  ystepdenominv       ; r_lstepy | r_lstepx
-	__asm fxch  st(1)               ; r_lstepx | r_lstepy
-	__asm fistp dword ptr [r_sstepx]
-	__asm fistp dword ptr [r_sstepy]
-
-	/*
-	t0 = r_p0[3] - r_p2[3];
-	t1 = r_p1[3] - r_p2[3];
-	r_tstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_tstepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
-			ystepdenominv);
-	*/
-	__asm mov eax, dword ptr [r_p0+12]
-	__asm mov ebx, dword ptr [r_p1+12]
-	__asm sub eax, dword ptr [r_p2+12]
-	__asm sub ebx, dword ptr [r_p2+12]
+		__asm fstp  ystepdenominv; (empty)
 
 	__asm mov   t0_int, eax
 	__asm mov   t1_int, ebx
-	__asm fild  t0_int              ; t0
-	__asm fild  t1_int              ; t1 | t0
-	__asm fxch  st(1)               ; t0 | t1
-	__asm fstp  t0                  ; t1
-	__asm fst   t1                  ; (empty)
-
-	__asm fmul  p01_minus_p21       ; t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p01_minus_p21
-	__asm fmul  p11_minus_p21       ; t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t1                  ; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p00_minus_p20       ; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p10_minus_p20       ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fxch  st(2)               ; t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
-	__asm fsubp st(3), st           ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fsubrp st(1), st           ; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fxch  st(1)               ; t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
-	__asm fmul  xstepdenominv       ; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; t1
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
 	__asm fxch  st(1)
-	__asm fmul  ystepdenominv       ; r_lstepy | r_lstepx
-	__asm fxch  st(1)               ; r_lstepx | r_lstepy
-	__asm fistp dword ptr [r_tstepx]
-	__asm fistp dword ptr [r_tstepy]
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_lrstepx]
+		__asm fistp dword ptr[r_lrstepy]
 
-	/*
-	t0 = r_p0[5] - r_p2[5];
-	t1 = r_p1[5] - r_p2[5];
-	r_zistepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_zistepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
-			ystepdenominv);
-	*/
-	__asm mov eax, dword ptr [r_p0+20]
-	__asm mov ebx, dword ptr [r_p1+20]
-	__asm sub eax, dword ptr [r_p2+20]
-	__asm sub ebx, dword ptr [r_p2+20]
+		/* FS: Start */
+		/*
+		t0 = r_p0[7] - r_p2[7];
+		t1 = r_p1[7] - r_p2[7];
+		r_lgstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+		r_lgstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+		*/
+		__asm fild  dword ptr d_xdenom; d_xdenom
+	__asm fdivr one; 1 / d_xdenom
+	__asm fst   xstepdenominv;
+	__asm fmul  negative_one; -(1 / d_xdenom)
+
+	__asm mov   eax, dword ptr[r_p0 + 28] // 7
+		__asm mov   ebx, dword ptr[r_p1 + 28]
+		__asm sub   eax, dword ptr[r_p2 + 28]
+		__asm sub   ebx, dword ptr[r_p2 + 28]
+
+		__asm fstp  ystepdenominv; (empty)
 
 	__asm mov   t0_int, eax
 	__asm mov   t1_int, ebx
-	__asm fild  t0_int              ; t0
-	__asm fild  t1_int              ; t1 | t0
-	__asm fxch  st(1)               ; t0 | t1
-	__asm fstp  t0                  ; t1
-	__asm fst   t1                  ; (empty)
-
-	__asm fmul  p01_minus_p21       ; t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p01_minus_p21
-	__asm fmul  p11_minus_p21       ; t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t1                  ; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p00_minus_p20       ; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fld   t0                  ; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fmul  p10_minus_p20       ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
-	__asm fxch  st(2)               ; t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
-	__asm fsubp st(3), st           ; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fsubrp st(1), st           ; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
-	__asm fxch  st(1)               ; t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
-	__asm fmul  xstepdenominv       ; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; t1
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
 	__asm fxch  st(1)
-	__asm fmul  ystepdenominv       ; r_lstepy | r_lstepx
-	__asm fxch  st(1)               ; r_lstepx | r_lstepy
-	__asm fistp dword ptr [r_zistepx]
-	__asm fistp dword ptr [r_zistepy]
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_lgstepx]
+		__asm fistp dword ptr[r_lgstepy]
+
+		/* FS: Start */
+		/*
+		t0 = r_p0[8] - r_p2[8];
+		t1 = r_p1[8] - r_p2[8];
+		r_lbstepy = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+		r_lbstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+		*/
+		__asm fild  dword ptr d_xdenom; d_xdenom
+	__asm fdivr one; 1 / d_xdenom
+	__asm fst   xstepdenominv;
+	__asm fmul  negative_one; -(1 / d_xdenom)
+
+	__asm mov   eax, dword ptr[r_p0 + 32] // 8
+		__asm mov   ebx, dword ptr[r_p1 + 32]
+		__asm sub   eax, dword ptr[r_p2 + 32]
+		__asm sub   ebx, dword ptr[r_p2 + 32]
+
+		__asm fstp  ystepdenominv; (empty)
+
+	__asm mov   t0_int, eax
+	__asm mov   t1_int, ebx
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; t1
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fxch  st(1)
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_lbstepx]
+		__asm fistp dword ptr[r_lbstepy]
+
+		/*
+		** put FPU back into extended precision chop mode
+		*/
+		__asm fldcw word ptr[fpu_chop_cw]
+
+		/*
+		t0 = r_p0[2] - r_p2[2];
+		t1 = r_p1[2] - r_p2[2];
+		r_sstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
+		xstepdenominv);
+		r_sstepy = (int)((t1 * p00_minus_p20 - t0* p10_minus_p20) *
+		ystepdenominv);
+		*/
+		__asm mov eax, dword ptr[r_p0 + 8]
+		__asm mov ebx, dword ptr[r_p1 + 8]
+		__asm sub eax, dword ptr[r_p2 + 8]
+		__asm sub ebx, dword ptr[r_p2 + 8]
+		__asm mov   t0_int, eax
+	__asm mov   t1_int, ebx
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; (empty)
+
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fxch  st(1)
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_sstepx]
+		__asm fistp dword ptr[r_sstepy]
+
+		/*
+		t0 = r_p0[3] - r_p2[3];
+		t1 = r_p1[3] - r_p2[3];
+		r_tstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
+		xstepdenominv);
+		r_tstepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
+		ystepdenominv);
+		*/
+		__asm mov eax, dword ptr[r_p0 + 12]
+		__asm mov ebx, dword ptr[r_p1 + 12]
+		__asm sub eax, dword ptr[r_p2 + 12]
+		__asm sub ebx, dword ptr[r_p2 + 12]
+
+		__asm mov   t0_int, eax
+	__asm mov   t1_int, ebx
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; (empty)
+
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fxch  st(1)
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_tstepx]
+		__asm fistp dword ptr[r_tstepy]
+
+		/*
+		t0 = r_p0[5] - r_p2[5];
+		t1 = r_p1[5] - r_p2[5];
+		r_zistepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
+		xstepdenominv);
+		r_zistepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
+		ystepdenominv);
+		*/
+		__asm mov eax, dword ptr[r_p0 + 20]
+		__asm mov ebx, dword ptr[r_p1 + 20]
+		__asm sub eax, dword ptr[r_p2 + 20]
+		__asm sub ebx, dword ptr[r_p2 + 20]
+
+		__asm mov   t0_int, eax
+	__asm mov   t1_int, ebx
+	__asm fild  t0_int; t0
+	__asm fild  t1_int; t1 | t0
+	__asm fxch  st(1); t0 | t1
+	__asm fstp  t0; t1
+	__asm fst   t1; (empty)
+
+	__asm fmul  p01_minus_p21; t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p01_minus_p21
+	__asm fmul  p11_minus_p21; t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t1; t1 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p00_minus_p20; t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fld   t0; t0 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fmul  p10_minus_p20; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t0 * p11_minus_p21 | t1 * p01_minus_p21
+	__asm fxch  st(2); t0 * p11_minus_p21 | t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21
+	__asm fsubp st(3), st; t0 * p10_minus_p20 | t1 * p00_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fsubrp st(1), st; t1 * p00_minus_p20 - t0 * p10_minus_p20 | t1 * p01_minus_p21 - t0 * p11_minus_p21
+	__asm fxch  st(1); t1 * p01_minus_p21 - t0 * p11_minus_p21 | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fmul  xstepdenominv; r_lstepx | t1 * p00_minus_p20 - t0 * p10_minus_p20
+	__asm fxch  st(1)
+	__asm fmul  ystepdenominv; r_lstepy | r_lstepx
+	__asm fxch  st(1); r_lstepx | r_lstepy
+	__asm fistp dword ptr[r_zistepx]
+		__asm fistp dword ptr[r_zistepy]
 
 	/*
 #if	id386ALIAS
@@ -640,7 +811,7 @@ void R_PolysetCalcGradients( int skinwidth )
 #endif
 	*/
 	__asm mov eax, d_pdrawspans
-	__asm cmp eax, offset R_PolysetDrawSpans8_Opaque
+	__asm cmp eax, offset R_PolysetDrawSpans8_Opaque_Coloured
 	__asm mov eax, r_sstepx
 	__asm mov ebx, r_tstepx
 	__asm jne translucent
@@ -689,35 +860,44 @@ void R_PolysetCalcGradients (int skinwidth)
 // very visible, overflow is very unlikely, because of ambient lighting
 	t0 = r_p0[4] - r_p2[4];
 	t1 = r_p1[4] - r_p2[4];
-	r_lstepx = (int)
-			ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
-	r_lstepy = (int)
-			ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+	r_lstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_lstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+
+	//qb: use ceil
+	t0 = r_p0[6] - r_p2[6];
+	t1 = r_p1[6] - r_p2[6];
+	r_lrstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_lrstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+
+	t0 = r_p0[7] - r_p2[7];
+	t1 = r_p1[7] - r_p2[7];
+	r_lgstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_lgstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+
+	t0 = r_p0[8] - r_p2[8];
+	t1 = r_p1[8] - r_p2[8];
+	r_lbstepx = (int)ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_lbstepy = (int)ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+
 
 	t0 = r_p0[2] - r_p2[2];
 	t1 = r_p1[2] - r_p2[2];
-	r_sstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_sstepy = (int)((t1 * p00_minus_p20 - t0* p10_minus_p20) *
-			ystepdenominv);
+	r_sstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_sstepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
 
 	t0 = r_p0[3] - r_p2[3];
 	t1 = r_p1[3] - r_p2[3];
-	r_tstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_tstepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
-			ystepdenominv);
+	r_tstepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_tstepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
 
 	t0 = r_p0[5] - r_p2[5];
 	t1 = r_p1[5] - r_p2[5];
-	r_zistepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) *
-			xstepdenominv);
-	r_zistepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) *
-			ystepdenominv);
+	r_zistepx = (int)((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+	r_zistepy = (int)((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
 
 //#if	id386ALIAS
 #if id386
-	if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+	if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 	{
 		a_sstepxfrac = r_sstepx << 16;
 		a_tstepxfrac = r_tstepx << 16;
@@ -733,7 +913,19 @@ void R_PolysetCalcGradients (int skinwidth)
 
 	a_ststepxwhole = skinwidth * (r_tstepx >> 16) + (r_sstepx >> 16);
 }
-#endif
+#endif /* !id386 */
+
+
+//qb: staticized
+static int		lcount;
+static int		lsfrac, ltfrac;
+static byte	*lpdest;
+static byte	*lptex;
+static int		llight;
+static int		lzi;
+static short	*lpz;
+static unsigned char *pix24;	// leilei - colored lighting
+static int trans[3];			// leilei - colored lighting
 
 /*
 ================
@@ -744,13 +936,6 @@ Random fizzle fade rasterizer
 */
 void R_PolysetDrawThreshSpans8 (spanpackage_t *pspanpackage)
 {
-	int		lcount;
-	byte	*lpdest;
-	byte	*lptex;
-	int		lsfrac, ltfrac;
-	int		llight;
-	int		lzi;
-	short	*lpz;
 
 	do
 	{
@@ -819,14 +1004,6 @@ R_PolysetDrawSpans8
 */
 void R_PolysetDrawSpans8_33( spanpackage_t *pspanpackage)
 {
-	int		lcount;
-	byte	*lpdest;
-	byte	*lptex;
-	int		lsfrac, ltfrac;
-	int		llight;
-	int		lzi;
-	short	*lpz;
-
 	do
 	{
 		lcount = d_aspancount - pspanpackage->count;
@@ -883,11 +1060,6 @@ void R_PolysetDrawSpans8_33( spanpackage_t *pspanpackage)
 
 void R_PolysetDrawSpansConstant8_33( spanpackage_t *pspanpackage)
 {
-	int		lcount;
-	byte	*lpdest;
-	int		lzi;
-	short	*lpz;
-
 	do
 	{
 		lcount = d_aspancount - pspanpackage->count;
@@ -927,14 +1099,6 @@ void R_PolysetDrawSpansConstant8_33( spanpackage_t *pspanpackage)
 
 void R_PolysetDrawSpans8_66(spanpackage_t *pspanpackage)
 {
-	int		lcount;
-	byte	*lpdest;
-	byte	*lptex;
-	int		lsfrac, ltfrac;
-	int		llight;
-	int		lzi;
-	short	*lpz;
-
 	do
 	{
 		lcount = d_aspancount - pspanpackage->count;
@@ -959,14 +1123,12 @@ void R_PolysetDrawSpans8_66(spanpackage_t *pspanpackage)
 			ltfrac = pspanpackage->tfrac;
 			llight = pspanpackage->light;
 			lzi = pspanpackage->zi;
-
 			do
 			{
 				if ((lzi >> 16) >= *lpz)
 				{
-					int temp = vid.colormap[*lptex + ( llight & 0xFF00 )];
-
-					*lpdest = vid.alphamap[temp*256 + *lpdest];
+					int temp = vid.colormap[*lptex + (llight & 0xFF00)];
+					*lpdest = vid.alphamap[temp * 256 + *lpdest];
 					*lpz = lzi >> 16;
 				}
 				lpdest++;
@@ -990,13 +1152,9 @@ void R_PolysetDrawSpans8_66(spanpackage_t *pspanpackage)
 	} while (pspanpackage->count != -999999);
 }
 
-void R_PolysetDrawSpansConstant8_66( spanpackage_t *pspanpackage)
-{
-	int		lcount;
-	byte	*lpdest;
-	int		lzi;
-	short	*lpz;
 
+void R_PolysetDrawSpansConstant8_66(spanpackage_t *pspanpackage)
+{
 	do
 	{
 		lcount = d_aspancount - pspanpackage->count;
@@ -1034,10 +1192,11 @@ void R_PolysetDrawSpansConstant8_66( spanpackage_t *pspanpackage)
 	} while (pspanpackage->count != -999999);
 }
 
-#if !id386
-void R_PolysetDrawSpans8_Opaque (spanpackage_t *pspanpackage)
+#if 1 //qb: no asm colored light support was- !id386
+// leilei - colored lighting
+
+void R_PolysetDrawSpans8_Opaque_Coloured(spanpackage_t *pspanpackage)
 {
-	int		lcount;
 
 	do
 	{
@@ -1056,13 +1215,6 @@ void R_PolysetDrawSpans8_Opaque (spanpackage_t *pspanpackage)
 
 		if (lcount)
 		{
-			int		lsfrac, ltfrac;
-			byte	*lpdest;
-			byte	*lptex;
-			int		llight;
-			int		lzi;
-			short	*lpz;
-
 			lpdest = pspanpackage->pdest;
 			lptex = pspanpackage->ptex;
 			lpz = pspanpackage->pz;
@@ -1070,7 +1222,6 @@ void R_PolysetDrawSpans8_Opaque (spanpackage_t *pspanpackage)
 			ltfrac = pspanpackage->tfrac;
 			llight = pspanpackage->light;
 			lzi = pspanpackage->zi;
-
 			do
 			{
 				if ((lzi >> 16) >= *lpz)
@@ -1078,9 +1229,21 @@ void R_PolysetDrawSpans8_Opaque (spanpackage_t *pspanpackage)
 //PGM
 					if(r_newrefdef.rdflags & RDF_IRGOGGLES && currententity->flags & RF_IR_VISIBLE)
 						*lpdest = ((byte *)vid.colormap)[irtable[*lptex]];
-					else
-					*lpdest = ((byte *)vid.colormap)[*lptex + (llight & 0xFF00)];
-//PGM
+					// leilei - colored lights begin
+					else if (coloredlights)
+					{
+						int lptemp = *lptex;
+						pix24 = (unsigned char *)&d_8to24table[lptemp];
+						//qb: works now...
+						trans[0] = CLAMP((int)(pix24[0] * (pspanpackage->lightr * shadelight[0])) >> 15, 0, 63);
+						trans[1] = CLAMP((int)(pix24[1] * (pspanpackage->lightg * shadelight[1])) >> 15, 0, 63);
+						trans[2] = CLAMP((int)(pix24[2] * (pspanpackage->lightb * shadelight[2])) >> 15, 0, 63);
+
+						*lpdest = palmap2[trans[0]][trans[1]][trans[2]];
+					}	// leilei - colored lights end
+					else *lpdest = ((byte *)vid.colormap)[*lptex + (llight & 0xFF00)];
+
+					//PGM
 					*lpz = lzi >> 16;
 				}
 				lpdest++;
@@ -1153,6 +1316,9 @@ void R_RasterizeAliasPolySmooth (void)
 	int				initialleftheight, initialrightheight;
 	int				*plefttop, *prighttop, *pleftbottom, *prightbottom;
 	int				working_lstepx, originalcount;
+	int				working_lrstepx;
+	int				working_lgstepx;
+	int				working_lbstepx;
 
 	plefttop = pedgetable->pleftedgevert0;
 	prighttop = pedgetable->prightedgevert0;
@@ -1163,18 +1329,20 @@ void R_RasterizeAliasPolySmooth (void)
 	initialleftheight = pleftbottom[1] - plefttop[1];
 	initialrightheight = prightbottom[1] - prighttop[1];
 
-//
-// set the s, t, and light gradients, which are consistent across the triangle
-// because being a triangle, things are affine
-//
-	R_PolysetCalcGradients (r_affinetridesc.skinwidth);
-//
-// rasterize the polygon
-//
 
-//
-// scan out the top (and possibly only) part of the left edge
-//
+
+	//
+	// set the s, t, and light gradients, which are consistent across the triangle
+	// because being a triangle, things are affine
+	//
+	R_PolysetCalcGradients(r_affinetridesc.skinwidth);
+	//
+	// rasterize the polygon
+	//
+
+	//
+	// scan out the top (and possibly only) part of the left edge
+	//
 	d_pedgespanpackage = a_spans;
 
 	ystart = plefttop[1];
@@ -1184,7 +1352,7 @@ void R_RasterizeAliasPolySmooth (void)
 			(plefttop[3] >> 16) * r_affinetridesc.skinwidth;
 //#if	id386ALIAS
 #if id386
-	if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+	if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 	{
 		d_sfrac = (plefttop[2] & 0xFFFF) << 16;
 		d_tfrac = (plefttop[3] & 0xFFFF) << 16;
@@ -1199,7 +1367,11 @@ void R_RasterizeAliasPolySmooth (void)
 //#endif
 	d_light = plefttop[4];
 	d_zi = plefttop[5];
-
+#ifdef COLMODEL
+	d_lightr = plefttop[6];
+	d_lightg = plefttop[7];
+	d_lightb = plefttop[8];
+#endif
 	d_pdest = (byte *)d_viewbuffer +
 			ystart * r_screenwidth + plefttop[0];
 	d_pz = d_pzbuffer + ystart * d_zwidth + plefttop[0];
@@ -1216,6 +1388,11 @@ void R_RasterizeAliasPolySmooth (void)
 
 	// FIXME: need to clamp l, s, t, at both ends?
 		d_pedgespanpackage->light = d_light;
+#ifdef COLMODEL
+		d_pedgespanpackage->lightr = d_lightr;
+		d_pedgespanpackage->lightg = d_lightg;
+		d_pedgespanpackage->lightb = d_lightb;
+#endif
 		d_pedgespanpackage->zi = d_zi;
 
 		d_pedgespanpackage++;
@@ -1227,7 +1404,7 @@ void R_RasterizeAliasPolySmooth (void)
 
 //#if	id386ALIAS
 #if id386
-		if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+		if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 		{
 			d_pzbasestep = (d_zwidth + ubasestep) << 1;
 			d_pzextrastep = d_pzbasestep + 2;
@@ -1249,10 +1426,21 @@ void R_RasterizeAliasPolySmooth (void)
 	// for negative steps in x along left edge, bias toward overflow rather than
 	// underflow (sort of turning the floor () we did in the gradient calcs into
 	// ceil (), but plus a little bit)
-		if (ubasestep < 0)
+		if (ubasestep < 0){
 			working_lstepx = r_lstepx - 1;
+			working_lrstepx = r_lrstepx - 1;
+			working_lgstepx = r_lgstepx - 1;
+			working_lbstepx = r_lbstepx - 1;
+		}
 		else
+		{
 			working_lstepx = r_lstepx;
+			working_lrstepx = r_lrstepx;
+			working_lgstepx = r_lgstepx;
+			working_lbstepx = r_lbstepx;
+
+
+		}
 
 		d_countextrastep = ubasestep + 1;
 		d_ptexbasestep = ((r_sstepy + r_sstepx * ubasestep) >> 16) +
@@ -1260,7 +1448,7 @@ void R_RasterizeAliasPolySmooth (void)
 				r_affinetridesc.skinwidth;
 //#if	id386ALIAS
 #if id386
-		if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+		if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 		{
 			d_sfracbasestep = (r_sstepy + r_sstepx * ubasestep) << 16;
 			d_tfracbasestep = (r_tstepy + r_tstepx * ubasestep) << 16;
@@ -1276,12 +1464,18 @@ void R_RasterizeAliasPolySmooth (void)
 		d_lightbasestep = r_lstepy + working_lstepx * ubasestep;
 		d_zibasestep = r_zistepy + r_zistepx * ubasestep;
 
+		d_lightbasestepr = r_lrstepy + working_lrstepx * ubasestep;
+		d_lightbasestepg = r_lgstepy + working_lgstepx * ubasestep;
+		d_lightbasestepb = r_lbstepy + working_lbstepx * ubasestep;
+
+
+
 		d_ptexextrastep = ((r_sstepy + r_sstepx * d_countextrastep) >> 16) +
 				((r_tstepy + r_tstepx * d_countextrastep) >> 16) *
 				r_affinetridesc.skinwidth;
 //#if	id386ALIAS
 #if id386
-		if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+		if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 		{
 			d_sfracextrastep = (r_sstepy + r_sstepx*d_countextrastep) << 16;
 			d_tfracextrastep = (r_tstepy + r_tstepx*d_countextrastep) << 16;
@@ -1297,8 +1491,12 @@ void R_RasterizeAliasPolySmooth (void)
 		d_lightextrastep = d_lightbasestep + working_lstepx;
 		d_ziextrastep = d_zibasestep + r_zistepx;
 
+		d_lightextrastepr = d_lightbasestepr + working_lrstepx;
+		d_lightextrastepg = d_lightbasestepg + working_lgstepx;
+		d_lightextrastepb = d_lightbasestepb + working_lbstepx;
+
 #if id386
-		if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+		if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 		{
 			R_PolysetScanLeftEdge (initialleftheight);
 		}
@@ -1331,7 +1529,11 @@ void R_RasterizeAliasPolySmooth (void)
 		d_tfrac = 0;
 		d_light = plefttop[4];
 		d_zi = plefttop[5];
-
+#ifdef COLMODEL
+		d_lightr = plefttop[6];
+		d_lightg = plefttop[7];
+		d_lightb = plefttop[8];
+#endif
 		d_pdest = (byte *)d_viewbuffer + ystart * r_screenwidth + plefttop[0];
 		d_pz = d_pzbuffer + ystart * d_zwidth + plefttop[0];
 
@@ -1347,6 +1549,11 @@ void R_RasterizeAliasPolySmooth (void)
 
 		// FIXME: need to clamp l, s, t, at both ends?
 			d_pedgespanpackage->light = d_light;
+#ifdef COLMODEL
+			d_pedgespanpackage->lightr = d_lightr;
+			d_pedgespanpackage->lightg = d_lightg;
+			d_pedgespanpackage->lightb = d_lightb;
+#endif
 			d_pedgespanpackage->zi = d_zi;
 
 			d_pedgespanpackage++;
@@ -1361,7 +1568,7 @@ void R_RasterizeAliasPolySmooth (void)
 
 //#if	id386ALIAS
 #if id386
-			if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+			if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 			{
 				d_pzbasestep = (d_zwidth + ubasestep) << 1;
 				d_pzextrastep = d_pzbasestep + 2;
@@ -1375,10 +1582,19 @@ void R_RasterizeAliasPolySmooth (void)
 			}
 //#endif
 
-			if (ubasestep < 0)
+			if (ubasestep < 0){
 				working_lstepx = r_lstepx - 1;
-			else
+				working_lrstepx = r_lrstepx - 1;
+				working_lgstepx = r_lgstepx - 1;
+				working_lbstepx = r_lbstepx - 1;
+			}
+			else{
+
 				working_lstepx = r_lstepx;
+				working_lrstepx = r_lrstepx;
+				working_lgstepx = r_lgstepx;
+				working_lbstepx = r_lbstepx;
+			}
 
 			d_countextrastep = ubasestep + 1;
 			d_ptexbasestep = ((r_sstepy + r_sstepx * ubasestep) >> 16) +
@@ -1386,7 +1602,7 @@ void R_RasterizeAliasPolySmooth (void)
 					r_affinetridesc.skinwidth;
 //#if	id386ALIAS
 #if id386
-			if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+			if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 			{
 				d_sfracbasestep = (r_sstepy + r_sstepx * ubasestep) << 16;
 				d_tfracbasestep = (r_tstepy + r_tstepx * ubasestep) << 16;
@@ -1402,12 +1618,18 @@ void R_RasterizeAliasPolySmooth (void)
 			d_lightbasestep = r_lstepy + working_lstepx * ubasestep;
 			d_zibasestep = r_zistepy + r_zistepx * ubasestep;
 
+			d_lightbasestepr = r_lrstepy + working_lrstepx * ubasestep;
+			d_lightbasestepg = r_lgstepy + working_lgstepx * ubasestep;
+			d_lightbasestepb = r_lbstepy + working_lbstepx * ubasestep;
+
+			d_zibasestep = r_zistepy + r_zistepx * ubasestep;
+
 			d_ptexextrastep = ((r_sstepy + r_sstepx * d_countextrastep) >> 16) +
 					((r_tstepy + r_tstepx * d_countextrastep) >> 16) *
 					r_affinetridesc.skinwidth;
 //#if	id386ALIAS
 #if id386
-			if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+			if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 			{
 				d_sfracextrastep = ((r_sstepy+r_sstepx*d_countextrastep) & 0xFFFF)<<16;
 				d_tfracextrastep = ((r_tstepy+r_tstepx*d_countextrastep) & 0xFFFF)<<16;
@@ -1423,8 +1645,12 @@ void R_RasterizeAliasPolySmooth (void)
 			d_lightextrastep = d_lightbasestep + working_lstepx;
 			d_ziextrastep = d_zibasestep + r_zistepx;
 
+			d_lightextrastepr = d_lightbasestepr + working_lrstepx;
+			d_lightextrastepg = d_lightbasestepg + working_lgstepx;
+			d_lightextrastepb = d_lightbasestepb + working_lbstepx;
+
 #if id386
-			if ( d_pdrawspans == R_PolysetDrawSpans8_Opaque )
+			if (d_pdrawspans == R_PolysetDrawSpans8_Opaque_Coloured)
 			{
 				R_PolysetScanLeftEdge (height);
 			}
@@ -1473,6 +1699,8 @@ void R_RasterizeAliasPolySmooth (void)
 		(*d_pdrawspans) (pstart);
 	}
 }
+
+
 
 
 /*

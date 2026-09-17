@@ -1,4 +1,4 @@
-#include "joystick.h"
+//#include "joystick.h"
 #ifdef OPENGL
 #include "../ref_gl/gl_local.h"
 #include <dlfcn.h>

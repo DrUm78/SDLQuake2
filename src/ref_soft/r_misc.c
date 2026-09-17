@@ -206,6 +206,7 @@ void R_TransformFrustum (void)
 }
 
 
+#if !(defined __linux__ && defined __i386__)
 #if !id386
 /*
 ================
@@ -221,7 +222,6 @@ void TransformVector (vec3_t in, vec3_t out)
 
 #else
 
-#ifdef _WIN32 /* non-windows version is elsewhere */
 __declspec( naked ) void TransformVector( vec3_t vin, vec3_t vout )
 {
 	__asm mov eax, dword ptr [esp+4]
@@ -334,7 +334,7 @@ void R_ViewChanged (vrect_t *vr)
 
 	r_refdef.vrect = *vr;
 
-	r_refdef.horizontalFieldOfView = 2*tan((float)r_newrefdef.fov_x/360*M_PI);;
+	r_refdef.horizontalFieldOfView = 2*tan((float)r_newrefdef.fov_x/360*M_PI);
 	verticalFieldOfView = 2*tan((float)r_newrefdef.fov_y/360*M_PI);
 
 	r_refdef.fvrectx = (float)r_refdef.vrect.x;
@@ -455,15 +455,23 @@ void R_SetupFrame (void)
 	else
 		r_dowarp = false;
 
-	if (r_dowarp)
+	//if (r_dowarp)
+	if (r_dowarp && r_warpbuffer)
 	{	// warp into off screen buffer
 		vrect.x = 0;
 		vrect.y = 0;
-		vrect.width = r_newrefdef.width < WARP_WIDTH ? r_newrefdef.width : WARP_WIDTH;
-		vrect.height = r_newrefdef.height < WARP_HEIGHT ? r_newrefdef.height : WARP_HEIGHT;
+
+		//vrect.width = r_newrefdef.width < WARP_WIDTH ? r_newrefdef.width : WARP_WIDTH;
+		//vrect.width = r_newrefdef.width;
+		vrect.width = r_warpwidth;
+		//vrect.height = r_newrefdef.height < WARP_HEIGHT ? r_newrefdef.height : WARP_HEIGHT;
+		//vrect.height = r_newrefdef.height;
+		vrect.height = r_warpheight;
 
 		d_viewbuffer = r_warpbuffer;
-		r_screenwidth = WARP_WIDTH;
+		//r_screenwidth = WARP_WIDTH;
+		//r_screenwidth = vid.rowbytes;
+		r_screenwidth = r_warpwidth;
 	}
 	else
 	{
@@ -622,7 +630,6 @@ void R_ScreenShot_f (void)
 	char		pcxname[80]; 
 	char		checkname[MAX_OSPATH];
 	FILE		*f;
-	byte		palette[768];
 
 	// create the scrnshots directory if it doesn't exist
 	Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot", ri.FS_Gamedir());
@@ -649,20 +656,12 @@ void R_ScreenShot_f (void)
 		return;
 	}
 
-	// turn the current 32 bit palette into a 24 bit palette
-	for (i=0 ; i<256 ; i++)
-	{
-		palette[i*3+0] = sw_state.currentpalette[i*4+0];
-		palette[i*3+1] = sw_state.currentpalette[i*4+1];
-		palette[i*3+2] = sw_state.currentpalette[i*4+2];
-	}
-
 // 
 // save the pcx file 
 // 
 
 	WritePCXfile (checkname, vid.buffer, vid.width, vid.height, vid.rowbytes,
-				  palette);
+				  thepalette);
 
 	ri.Con_Printf (PRINT_ALL, "Wrote %s\n", checkname);
 } 

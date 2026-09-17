@@ -24,8 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "r_local.h"
 
-#define LIGHT_MIN	5		// lowest light value we'll allow, to avoid the
-							//  need for inner-loop light clamping
 
 //PGM
 extern byte iractive;
@@ -36,6 +34,12 @@ int				r_amodels_drawn;
 affinetridesc_t	r_affinetridesc;
 
 vec3_t			r_plightvec;
+
+//qb: colored lighting from leilei
+vec3_t			r_prlightvec;
+vec3_t			r_pglightvec;
+vec3_t			r_pblightvec;
+
 vec3_t          r_lerped[1024];
 vec3_t          r_lerp_frontv, r_lerp_backv, r_lerp_move;
 
@@ -302,7 +306,10 @@ void R_AliasPreparePoints (void)
 			}
 			else
 			{
-				R_AliasClipTriangle (pfv[2], pfv[1], pfv[0]);
+				if (coloredlights)
+					R_AliasClipTriangleRGB(pfv[2], pfv[1], pfv[0]);
+				else
+					R_AliasClipTriangle(pfv[2], pfv[1], pfv[0]);
 			}
 		}
 	}
@@ -337,7 +344,10 @@ void R_AliasPreparePoints (void)
 			}
 			else		
 			{	// partially clipped
-				R_AliasClipTriangle (pfv[0], pfv[1], pfv[2]);
+				if (coloredlights)
+					R_AliasClipTriangleRGB(pfv[0], pfv[1], pfv[2]);
+				else
+					R_AliasClipTriangle(pfv[0], pfv[1], pfv[2]);
 			}
 		}
 	}
@@ -874,31 +884,42 @@ R_AliasSetupLighting
 void R_AliasSetupLighting (void)
 {
 	alight_t		lighting;
+
+	/*
 	float			lightvec[3] = {-1, 0, 0};
-	vec3_t			light;
+	float			rlightvec[3] = {-1, 0, 0};
+	float			glightvec[3] = {-1, 0, 0};
+	float			blightvec[3] = {-1, 0, 0};
+	*/
+
+	float			lightvec[3] = { 0.2, -0.8, 0.6 };
+	float			rlightvec[3] = { -1, 0, 0 };
+	float			glightvec[3] = { 0, -1, 0 };
+	float			blightvec[3] = { 0, 0, -1 };
+	//qb: use shadelight.	vec3_t			light;
 	int				i, j;
 
 	// all components of light should be identical in software
 	if ( currententity->flags & RF_FULLBRIGHT )
 	{
 		for (i=0 ; i<3 ; i++)
-			light[i] = 1.0;
+			shadelight[i] = 1.0;
 	}
 	else
 	{
-		R_LightPoint (currententity->origin, light);
+			R_LightPointColor(currententity->origin, shadelight);
 	}
 
 	// save off light value for server to look at (BIG HACK!)
 	if ( currententity->flags & RF_WEAPONMODEL )
-		r_lightlevel->value = 150.0 * light[0];
+		r_lightlevel->value = 150.0 * shadelight[0];
 
 
 	if ( currententity->flags & RF_MINLIGHT )
 	{
 		for (i=0 ; i<3 ; i++)
-			if (light[i] < 0.1)
-				light[i] = 0.1;
+		if (shadelight[i] < 0.1)
+			shadelight[i] = 0.1;
 	}
 
 	if ( currententity->flags & RF_GLOW )
@@ -909,21 +930,26 @@ void R_AliasSetupLighting (void)
 		scale = 0.1 * sin(r_newrefdef.time*7);
 		for (i=0 ; i<3 ; i++)
 		{
-			min = light[i] * 0.8;
-			light[i] += scale;
-			if (light[i] < min)
-				light[i] = min;
+			min = shadelight[i] * 0.8;
+			shadelight[i] += scale;
+			if (shadelight[i] < min)
+				shadelight[i] = min;
 		}
 	}
 
-	j = (light[0] + light[1] + light[2])*0.3333*255;
+	j = (shadelight[0] + shadelight[1] + shadelight[2])*0.3333 * 255;
 
 	lighting.ambientlight = j;
 	lighting.shadelight = j;
 
+
 	lighting.plightvec = lightvec;
 
-// clamp lighting so it doesn't overbright as much
+	lighting.prlightvec = rlightvec;
+	lighting.pglightvec = glightvec;
+	lighting.pblightvec = blightvec;
+
+	// clamp lighting so it doesn't overbright as much
 	if (lighting.ambientlight > 128)
 		lighting.ambientlight = 128;
 	if (lighting.ambientlight + lighting.shadelight > 192)
@@ -948,10 +974,14 @@ void R_AliasSetupLighting (void)
 
 	r_shadelight *= VID_GRADES;
 
-// rotate the lighting vector into the model's frame of reference
-	r_plightvec[0] =  DotProduct( lighting.plightvec, s_alias_forward );
-	r_plightvec[1] = -DotProduct( lighting.plightvec, s_alias_right );
-	r_plightvec[2] =  DotProduct( lighting.plightvec, s_alias_up );
+	// rotate the lighting vector into the model's frame of reference
+	r_plightvec[0] = DotProduct(lighting.plightvec, s_alias_forward);
+	r_plightvec[1] = -DotProduct(lighting.plightvec, s_alias_right);
+	r_plightvec[2] = DotProduct(lighting.plightvec, s_alias_up);
+
+	r_prlightvec[0] = DotProduct(lighting.prlightvec, s_alias_forward);
+	r_pglightvec[1] = -DotProduct(lighting.pglightvec, s_alias_right);
+	r_pblightvec[2] = DotProduct(lighting.pblightvec, s_alias_up);
 }
 
 
@@ -1038,7 +1068,7 @@ R_AliasDrawModel
 void R_AliasDrawModel (void)
 {
 	extern void	(*d_pdrawspans)(void *);
-	extern void R_PolysetDrawSpans8_Opaque( void * );
+	extern void R_PolysetDrawSpans8_Opaque_Coloured(void *);
 	extern void R_PolysetDrawSpans8_33( void * );
 	extern void R_PolysetDrawSpans8_66( void * );
 	extern void R_PolysetDrawSpansConstant8_33( void * );
@@ -1153,7 +1183,7 @@ void R_AliasDrawModel (void)
 	else if ( currententity->flags & RF_TRANSLUCENT )
 	{
 		if ( currententity->alpha > 0.66 )
-			d_pdrawspans = R_PolysetDrawSpans8_Opaque;
+			d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
 		else if ( currententity->alpha > 0.33 )
 			d_pdrawspans = R_PolysetDrawSpans8_66;
 		else
@@ -1161,7 +1191,7 @@ void R_AliasDrawModel (void)
 	}
 	else
 	{
-		d_pdrawspans = R_PolysetDrawSpans8_Opaque;
+		d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
 	}
 
 	/*

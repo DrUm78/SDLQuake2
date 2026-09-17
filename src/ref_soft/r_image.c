@@ -315,17 +315,11 @@ void LoadTGA (char *name, byte **pic, int *width, int *height)
 							alphabyte = 255;
 							break;
 						case 32:
-							blue = *buf_p++;
-							green = *buf_p++;
-							red = *buf_p++;
-							alphabyte = *buf_p++;
-							break;
-						default:
-							blue = 0;
-							green = 0;
-							red = 0;
-							alphabyte = 0;
-							break;
+								blue = *buf_p++;
+								green = *buf_p++;
+								red = *buf_p++;
+								alphabyte = *buf_p++;
+								break;
 					}
 	
 					for(j=0;j<packetSize;j++) {
@@ -500,20 +494,12 @@ image_t	*R_FindImage (char *name, imagetype_t type)
 	int		i, len;
 	byte	*pic, *palette;
 	int		width, height;
-	char *ptr;
-	
+
 	if (!name)
 		return NULL;	// ri.Sys_Error (ERR_DROP, "R_FindImage: NULL name");
 	len = strlen(name);
 	if (len<5)
 		return NULL;	// ri.Sys_Error (ERR_DROP, "R_FindImage: bad name: %s", name);
-	
-#ifndef _WIN32
-	// fix backslashes
-	while ((ptr=strchr(name,'\\'))) {
-	  *ptr = '/';
-	}
-#endif
 
 	// look for it
 	for (i=0, image=r_images ; i<numr_images ; i++,image++)

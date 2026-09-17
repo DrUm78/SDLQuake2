@@ -39,9 +39,9 @@
 #include "../client/keys.h"
 #include "rw_linux.h"
 
-#ifdef Joystick
+/*#ifdef Joystick
 #include "joystick.h"
-#endif
+#endif*/
 
 /*****************************************************************************/
 

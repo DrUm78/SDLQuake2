@@ -25,7 +25,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 image_t		*draw_chars;				// 8*8 graphic characters
 
-//=============================================================================
+#define COLORLEVELS 64
+#define PALBRIGHTS 0  //qb: wow, Q2 doesn't have fullbrights?
+
 
 /*
 ================
@@ -50,6 +52,168 @@ image_t *Draw_FindPic (char *name)
 
 
 
+void	Draw_8to24(byte *palette)
+{
+	byte	*pal;
+	unsigned r, g, b;
+	unsigned v;
+	unsigned short i;
+	byte	*table;
+	float gamma = 0;
+
+	//
+	// 8 8 8 encoding
+	//
+	pal = palette;
+	table = (byte *)d_8to24tabble;
+	for (i = 0; i<256; i++)
+	{
+		//		Con_Printf (".");	// loop an indicator
+		r = pal[0];
+		g = pal[1];
+		b = pal[2];
+
+		if (r>255) r = 255;
+		if (g > 255) g = 255;
+		if (b > 255) b = 255;
+		pal += 3;
+		v = (255 << 24) + (r << 0) + (g << 8) + (b << 16);
+		*table++ = v;
+	}
+
+	// The 15-bit table we use is actually made elsewhere (it's palmap)
+
+	d_8to24tabble[255] &= 0xffffff;	// 255 is transparent
+	//qb: gray is the new black.. d_8to24tabble[0] &= 0x000000;	// black is black
+}
+
+// leilei - Colored Lights
+byte	palmap2[64][64][64];		// Higher quality for lighting
+
+//Sys_Error("butts");
+// this is just a lookup table version of the above
+
+int FindColor(int r, int g, int b)
+{
+	int		bestcolor;
+
+	if (r > 255)r = 255; if (r < 0)r = 0;
+	if (g > 255)g = 255; if (g < 0)g = 0;
+	if (b > 255)b = 255; if (b < 0)b = 0;
+	bestcolor = palmap2[r >> 3][g >> 3][b >> 3];
+	return bestcolor;
+}
+
+
+
+
+// o^_^o
+
+/*
+===============
+BestColor
+
+comes from lumpy
+===============
+*/
+
+
+/*
+=============
+R_CalcPalette
+
+=============
+
+byte		*thepalette;
+
+void R_GetPalette(void)
+{
+	thepalette = (byte *)d_8to24table;
+}
+*/
+
+byte BestColor(int r, int g, int b, int start, int stop)
+{
+	int	i;
+	int	dr, dg, db;
+	int	bestdistortion, distortion;
+	int	berstcolor;
+	byte	*pal;
+
+	//
+	// let any color go to 0 as a last resort
+	//
+	// R_GetPalette();
+	bestdistortion = 256 * 256 * 4;
+	berstcolor = 0;
+
+	if (r > 255) r = 255;
+	if (g > 255) g = 255;
+	if (b > 255) b = 255;
+
+	pal = (byte *)d_8to24table + start * 4;
+	for (i = start; i <= stop; i++)
+	{
+		dr = r - (int)pal[0];
+		dg = g - (int)pal[1];
+		db = b - (int)pal[2];
+		pal += 4;
+		distortion = dr*dr + dg*dg + db*db + dr * 5 + dg * 5 + db * 5; //qb: this will increase color sensitity at low brightness.  Added + dr + dg + db
+		if (distortion < bestdistortion)
+		{
+			if (!distortion)
+				return i;		// perfect match
+
+			bestdistortion = distortion;
+			berstcolor = i;
+		}
+	}
+	return berstcolor;
+}
+
+void Draw_InitRGBMap(void)
+{
+	int		r, g, b;
+	float ra, ga, ba, ia;
+	int		beastcolor;
+	float mypow = 1 / 1.3;
+	float mydiv = 200;
+	float mysat = r_lightsaturation->value; // was 1.6;
+
+	// Make the 18-bit lookup table here
+	// This is a HUGE 256kb table, the biggest there is here
+	// TODO: Option to enable this
+
+	{
+		Draw_8to24((byte *)d_8to24table);
+		for (r = 0; r < 256; r += 4)
+		{
+			for (g = 0; g < 256; g += 4)
+			{
+				for (b = 0; b < 256; b += 4)
+				{
+					// 3dfx gamma hack, trying to match the saturation and gamma of the refgl+3dfxgl combo so many q2 players are familiar with
+
+					ra = pow(r / mydiv, mypow) * mydiv;
+					ga = pow(g / mydiv, mypow) * mydiv;
+					ba = pow(b / mydiv, mypow) * mydiv;
+
+					ia = (ra * 0.333) + (ga * 0.333) + (ba * 0.333);
+					ra = ia + (ra - ia) * mysat;
+					ga = ia + (ga - ia) * mysat;
+					ba = ia + (ba - ia) * mysat;
+					//beastcolor = BestColor (pow(ra / mydiv, mypow) * mydiv, pow(ga / mydiv, mypow) * mydiv, pow(ba / mydiv, mypow) * mydiv, 1, 254);
+					beastcolor = BestColor((int)ra, (int)ga, (int)ba, 1, 254);
+					//beastcolor = BestColor (ra, ga, ba, 1, 254);
+					palmap2[r >> 2][g >> 2][b >> 2] = beastcolor;
+
+				}
+			}
+		}
+	}
+}
+
+
 /*
 ===============
 Draw_InitLocal
@@ -58,6 +222,10 @@ Draw_InitLocal
 void Draw_InitLocal (void)
 {
 	draw_chars = Draw_FindPic ("conchars");
+	// Knightmare- error out instead of crashing if we can't load this
+	if (!draw_chars)
+		ri.Sys_Error(ERR_FATAL, "Couldn't load pics/conchars.pcx");
+	// end Knightmare
 }
 
 
@@ -168,6 +336,7 @@ void Draw_StretchPicImplementation (int x, int y, int w, int h, image_t	*pic)
 	int				f, fstep;
 	int				skip;
 
+	w = (int)(w / 4) * 4; //qb: for DIB, sigh... probably should be 'ifdef DIB'
 	if ((x < 0) ||
 		(x + w > vid.width) ||
 		(y + h > vid.height))

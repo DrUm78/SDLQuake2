@@ -1,7 +1,7 @@
 /*
 	cd_music.c
 
-	Replaces cd_linux.c / cd_sdl.c (formerly cd_mp3.c): instead of
+	Replaces cd_linux.c / cd_sdl.c: instead of
 	driving a physical CD-ROM drive via ioctl(), this module plays
 	background music files from disk (MP3 via dr_mp3, FLAC via
 	dr_flac - both header-only) while keeping exactly the same public
@@ -517,7 +517,7 @@ void CDAudio_MixSamples(byte *stream, int len)
 }
 
 /* ------------------------------------------------------------------ */
-/* Public API - same signatures as cd_linux.c / cd_sdl.c / cd_mp3.c   */
+/* Public API - same signatures as cd_linux.c / cd_sdl.c              */
 /* ------------------------------------------------------------------ */
 
 void CDAudio_Play(int track, qboolean looping)
