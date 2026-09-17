@@ -4016,6 +4016,232 @@ void button_touch (edict_t *self, edict_t *other, cplane_t *plane, csurface_t *s
 void Think_CalcMoveSpeed (edict_t *self);
 void Think_SpawnDoorTrigger (edict_t *ent);
 void func_train_find (edict_t *self);
+void SP_clone (edict_t *self, edict_t *other, edict_t *activator)
+{
+	edict_t	*parent;
+	edict_t	*child;
+	int		newteams=0;
+
+	parent = G_Find(NULL,FOFS(targetname),self->source);
+	if (!parent)
+		return;
+	child = G_Spawn();
+	child->classname = gi.TagMalloc((int)strlen(parent->classname)+1,TAG_LEVEL);
+	strcpy(child->classname,parent->classname);
+	child->s.modelindex = parent->s.modelindex;
+	VectorCopy(self->s.origin,child->s.origin);
+	child->svflags    = parent->svflags;
+	VectorCopy(parent->mins,child->mins);
+	VectorCopy(parent->maxs,child->maxs);
+	VectorCopy(parent->size,child->size);
+
+	if (self->newtargetname && strlen(self->newtargetname))
+		child->targetname = G_CopyString(self->newtargetname);
+	if (self->team && strlen(self->team))
+	{
+		child->team = G_CopyString(self->team);
+		newteams++;
+	}
+	if (self->target && strlen(self->target))
+		child->target = G_CopyString(self->target);
+
+	if (parent->deathtarget && strlen(parent->deathtarget))
+		child->deathtarget = G_CopyString(parent->deathtarget);
+	if (parent->destroytarget && strlen(parent->destroytarget))
+		child->destroytarget = G_CopyString(parent->destroytarget);
+	if (parent->killtarget && strlen(parent->killtarget))
+		child->killtarget = G_CopyString(parent->killtarget);
+
+	child->solid        = parent->solid;
+	child->clipmask     = parent->clipmask;
+	child->movetype     = parent->movetype;
+	child->mass         = parent->mass;
+	child->health       = parent->health;
+	child->max_health   = parent->max_health;
+	child->takedamage   = parent->takedamage;
+	child->dmg          = parent->dmg;
+	child->sounds       = parent->sounds;
+	child->speed        = parent->speed;
+	child->accel        = parent->accel;
+	child->decel        = parent->decel;
+	child->gib_type     = parent->gib_type;
+	child->noise_index  = parent->noise_index;
+	child->noise_index2 = parent->noise_index2;
+	child->wait         = parent->wait;
+	child->delay        = parent->delay;
+	child->random       = parent->random;
+	child->style        = parent->style;
+	child->flags        = parent->flags;
+	child->blocked      = parent->blocked;
+	child->touch        = parent->touch;
+	child->use          = parent->use;
+	child->pain         = parent->pain;
+	child->die          = parent->die;
+	child->s.effects    = parent->s.effects;
+	child->s.skinnum    = parent->s.skinnum;
+	child->item         = parent->item;
+	child->moveinfo.sound_start  = parent->moveinfo.sound_start;
+	child->moveinfo.sound_middle = parent->moveinfo.sound_middle;
+	child->moveinfo.sound_end    = parent->moveinfo.sound_end;
+	VectorCopy(parent->movedir,child->movedir);
+	VectorCopy(self->s.angles, child->s.angles);
+	if (VectorLength(child->s.angles) != 0)
+	{
+		if (child->s.angles[YAW] == 90 || child->s.angles[YAW] == 270)
+		{
+			// We're correct for these angles, not even gonna bother with others
+			vec_t	temp;
+			temp           = child->size[0];
+			child->size[0] = child->size[1];
+			child->size[1] = temp;
+			temp           = child->mins[0];
+			if (child->s.angles[YAW] == 90)
+			{
+				child->mins[0] = -child->maxs[1];
+				child->maxs[1] = child->maxs[0];
+				child->maxs[0] = -child->mins[1];
+				child->mins[1] = temp;
+			}
+			else
+			{
+				child->mins[0] = child->mins[1];
+				child->mins[1] = -child->maxs[0];
+				child->maxs[0] = child->maxs[1];
+				child->maxs[1] = -temp;
+			}
+		}
+		vectoangles(child->movedir,child->movedir);
+		child->movedir[PITCH] += child->s.angles[PITCH];
+		child->movedir[YAW]   += child->s.angles[YAW];
+		child->movedir[ROLL]  += child->s.angles[ROLL];
+		if (child->movedir[PITCH] > 360) child->movedir[PITCH] -= 360;
+		if (child->movedir[YAW]   > 360) child->movedir[YAW]   -= 360;
+		if (child->movedir[ROLL]  > 360) child->movedir[ROLL]  -= 360;
+		AngleVectors(child->movedir,child->movedir,NULL,NULL);
+	}
+	VectorAdd(child->s.origin,child->mins,child->absmin);
+	VectorAdd(child->s.origin,child->maxs,child->absmax);
+
+	child->spawnflags = parent->spawnflags;
+	// classname-specific stuff
+	if (!Q_stricmp(child->classname,"func_button"))
+	{
+		VectorCopy(child->s.origin,child->pos1);
+		child->moveinfo.distance = parent->moveinfo.distance;
+		VectorMA(child->pos1, child->moveinfo.distance, child->movedir, child->pos2);
+		child->moveinfo.state = 1;
+		child->moveinfo.speed = child->speed;
+		child->moveinfo.accel = child->accel;
+		child->moveinfo.decel = child->decel;
+		child->moveinfo.wait  = child->wait;
+		VectorCopy(child->pos1,     child->moveinfo.start_origin);
+		VectorCopy(child->s.angles, child->moveinfo.start_angles);
+		VectorCopy(child->pos2,     child->moveinfo.end_origin);
+		VectorCopy(child->s.angles, child->moveinfo.end_angles);
+		if (!child->targetname)
+			child->touch = button_touch;
+	}
+	else if (!Q_stricmp(child->classname,"func_door"))
+	{
+		VectorCopy(child->s.origin,child->pos1);
+		child->moveinfo.distance = parent->moveinfo.distance;
+		VectorMA(child->pos1, child->moveinfo.distance, child->movedir, child->pos2);
+		child->moveinfo.state = 1;
+		child->moveinfo.speed = child->speed;
+		child->moveinfo.accel = child->accel;
+		child->moveinfo.decel = child->decel;
+		child->moveinfo.wait  = child->wait;
+		VectorCopy(child->pos1,     child->moveinfo.start_origin);
+		VectorCopy(child->s.angles, child->moveinfo.start_angles);
+		VectorCopy(child->pos2,     child->moveinfo.end_origin);
+		VectorCopy(child->s.angles, child->moveinfo.end_angles);
+		if (child->health || child->targetname)
+			child->think = Think_CalcMoveSpeed;
+		else
+			child->think = Think_SpawnDoorTrigger;
+		child->nextthink = level.time + FRAMETIME;
+	}
+	else if (!Q_stricmp(child->classname,"func_door_rotating"))
+	{
+		VectorClear(child->s.angles);
+		VectorCopy(parent->s.angles,child->s.angles);
+		VectorCopy(parent->pos1, child->pos1);
+		VectorCopy(parent->pos2, child->pos2);
+		child->moveinfo.distance = parent->moveinfo.distance;
+		child->moveinfo.state = 1;
+		child->moveinfo.speed = child->speed;
+		child->moveinfo.accel = child->accel;
+		child->moveinfo.decel = child->decel;
+		child->moveinfo.wait  = child->wait;
+		VectorCopy(child->s.origin, child->moveinfo.start_origin);
+		VectorCopy(child->pos1,     child->moveinfo.start_angles);
+		VectorCopy(child->s.origin, child->moveinfo.end_origin);
+		VectorCopy(child->pos2,     child->moveinfo.end_angles);
+		if (child->health || child->targetname)
+			child->think = Think_CalcMoveSpeed;
+		else
+			child->think = Think_SpawnDoorTrigger;
+		child->nextthink = level.time + FRAMETIME;
+	}
+	else if (!Q_stricmp(child->classname,"func_rotating"))
+	{
+		VectorClear(child->s.angles);
+		if (child->spawnflags & 1)
+			child->use (child, NULL, NULL);
+	}
+	else if (!Q_stricmp(child->classname,"func_train"))
+	{
+		VectorClear(self->s.angles);
+		child->smooth_movement = parent->smooth_movement;
+		child->pitch_speed     = parent->pitch_speed;
+		child->yaw_speed       = parent->yaw_speed;
+		child->roll_speed      = parent->roll_speed;
+		child->moveinfo.speed = child->speed;
+		child->moveinfo.accel = child->moveinfo.decel = child->moveinfo.speed;
+		child->think = func_train_find;
+		child->nextthink = level.time + FRAMETIME;
+		if (child->moveinfo.sound_middle || parent->noise_index)
+		{
+			edict_t *speaker;
+			if (child->moveinfo.sound_middle)
+				child->noise_index = child->moveinfo.sound_middle;
+			else
+				child->noise_index = parent->noise_index;
+			child->moveinfo.sound_middle = 0;
+			speaker = G_Spawn();
+			speaker->classname   = "moving_speaker";
+			speaker->s.sound     = 0;
+			speaker->volume      = 1;
+			speaker->attenuation = 1;
+			speaker->owner       = child;
+			speaker->think       = Moving_Speaker_Think;
+			speaker->nextthink   = level.time + 2*FRAMETIME;
+			speaker->spawnflags  = 7;       // owner must be moving to play
+			child->speaker        = speaker;
+			if (VectorLength(child->s.origin))
+				VectorCopy(child->s.origin,speaker->s.origin);
+			else {
+				VectorAdd(child->absmin,child->absmax,speaker->s.origin);
+				VectorScale(speaker->s.origin,0.5,speaker->s.origin);
+			}
+			VectorSubtract(speaker->s.origin,child->s.origin,speaker->offset);
+		}
+	}
+	gi.unlinkentity(child);
+	KillBox(child);
+	gi.linkentity(child);
+	if (self->s.angles[YAW] != 0)
+	{
+		VectorAdd(child->s.origin,child->mins,child->absmin);
+		VectorAdd(child->s.origin,child->maxs,child->absmax);
+	}
+	self->count--;
+	if (!self->count)
+		G_FreeEdict(self);
+	if (newteams)
+		G_FindTeams();
+}
+
 void target_clone_starton (edict_t *self)
 {
 	self->use(self,NULL,NULL);
@@ -4030,7 +4256,7 @@ void SP_target_clone (edict_t *self)
 		G_FreeEdict(self);
 		return;
 	}
-	self->use = clone;
+	self->use = SP_clone;
 	if (self->spawnflags & 1)
 	{
 		self->think = target_clone_starton;

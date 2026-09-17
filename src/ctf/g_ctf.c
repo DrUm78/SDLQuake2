@@ -497,14 +497,12 @@ edict_t *SelectCTFSpawnPoint (edict_t *ent)
 	float	range, range1, range2;
 	char	*cname;
 
-	if (ent->client->resp.ctf_state) 
-	{
+	if (ent->client->resp.ctf_state)
 		if ( (int)(dmflags->value) & DF_SPAWN_FARTHEST)
 			return SelectFarthestDeathmatchSpawnPoint ();
 		else
 			return SelectRandomDeathmatchSpawnPoint ();
-	}
-	
+
 	ent->client->resp.ctf_state++;
 
 	switch (ent->client->resp.ctf_team) {
@@ -575,7 +573,7 @@ void CTFFragBonuses(edict_t *targ, edict_t *inflictor, edict_t *attacker)
 	edict_t *ent;
 	gitem_t *flag_item, *enemy_flag_item;
 	int otherteam;
-	edict_t *flag, *carrier;
+	edict_t *flag, *carrier = NULL;
 	char *c;
 	vec3_t v1, v2;
 
@@ -660,8 +658,6 @@ void CTFFragBonuses(edict_t *targ, edict_t *inflictor, edict_t *attacker)
 	if (!flag)
 		return; // can't find attacker's flag
 
-	carrier = NULL;
-	
 	// find attacker's team's flag carrier
 	for (i = 1; i <= maxclients->value; i++) {
 		carrier = g_edicts + i;
@@ -1724,7 +1720,7 @@ void CTFScoreboardMessage (edict_t *ent, edict_t *killer)
 		"xv 256 yv 12 num 2 20 ",
 		totalscore[0], total[0],
 		totalscore[1], total[1]);
-	len = strlen(string);
+	len = (int)strlen(string);
 
 	for (i=0 ; i<16 ; i++)
 	{
@@ -1772,7 +1768,7 @@ void CTFScoreboardMessage (edict_t *ent, edict_t *killer)
 
 			if (maxsize - len > strlen(entry)) {
 				strcat(string, entry);
-				len = strlen(string);
+				len = (int)strlen(string);
 				last[0] = i;
 			}
 		}
@@ -1808,7 +1804,7 @@ void CTFScoreboardMessage (edict_t *ent, edict_t *killer)
 #endif
 			if (maxsize - len > strlen(entry)) {
 				strcat(string, entry);
-				len = strlen(string);
+				len = (int)strlen(string);
 				last[1] = i;
 			}
 		}
@@ -1835,7 +1831,7 @@ void CTFScoreboardMessage (edict_t *ent, edict_t *killer)
 				k = 1;
 				sprintf(entry, "xv 0 yv %d string2 \"Spectators\" ", j);
 				strcat(string, entry);
-				len = strlen(string);
+				len = (int)strlen(string);
 				j += 8;
 			}
 
@@ -1848,7 +1844,7 @@ void CTFScoreboardMessage (edict_t *ent, edict_t *killer)
 				cl->ping > 999 ? 999 : cl->ping);
 			if (maxsize - len > strlen(entry)) {
 				strcat(string, entry);
-				len = strlen(string);
+				len = (int)strlen(string);
 			}
 			
 			if (n & 1)
@@ -3220,10 +3216,10 @@ int CTFUpdateJoinMenu(edict_t *ent)
 	}
 
 	if (ctf_forcejoin->string && *ctf_forcejoin->string) {
-		if (stricmp(ctf_forcejoin->string, "red") == 0) {
+		if (Q_stricmp(ctf_forcejoin->string, "red") == 0) {
 			joinmenu[jmenu_blue].text = NULL;
 			joinmenu[jmenu_blue].SelectFunc = NULL;
-		} else if (stricmp(ctf_forcejoin->string, "blue") == 0) {
+		} else if (Q_stricmp(ctf_forcejoin->string, "blue") == 0) {
 			joinmenu[jmenu_red].text = NULL;
 			joinmenu[jmenu_red].SelectFunc = NULL;
 		}
@@ -3408,7 +3404,7 @@ qboolean CTFCheckRules(void)
 				gi.positioned_sound (world->s.origin, world, CHAN_AUTO | CHAN_RELIABLE, gi.soundindex("misc/bigtele.wav"), 1, ATTN_NONE, 0);
 				return false;
 			default:
-				break;
+				return false;
 			}
 		}
 

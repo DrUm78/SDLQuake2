@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m_player.h"
 
 
-static qboolean	is_quad;
+qboolean	is_quad;
 static byte		is_silenced;
 
 
@@ -550,7 +550,7 @@ void Weapon_Generic (edict_t *ent, int FRAME_ACTIVATE_LAST, int FRAME_FIRE_LAST,
 		fire_frames, fire);
 
 	// run the weapon frame again if hasted
-	if (stricmp(ent->client->pers.weapon->pickup_name, "Grapple") == 0 &&
+	if (Q_stricmp(ent->client->pers.weapon->pickup_name, "Grapple") == 0 &&
 		ent->client->weaponstate == WEAPON_FIRING)
 		return;
 

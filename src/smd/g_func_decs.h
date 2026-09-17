@@ -902,6 +902,7 @@ extern void SP_target_skill ( edict_t * self ) ;
 extern void use_target_skill ( edict_t * self , edict_t * other , edict_t * activator ) ;
 extern void SP_target_clone ( edict_t * self ) ;
 extern void target_clone_starton ( edict_t * self ) ;
+extern void SP_clone ( edict_t * self , edict_t * other , edict_t * activator ) ;
 extern void SP_target_fade ( edict_t * self ) ;
 extern void use_target_fade ( edict_t * self , edict_t * other , edict_t * activator ) ;
 extern void SP_target_sky ( edict_t * self ) ;

@@ -175,7 +175,7 @@ void InitGame (void)
 //ZOID
 //This game.dll only supports deathmatch
 	if (!deathmatch->value) {
-		gi.dprintf("Forcing deathmatch.\n");
+		gi.dprintf("Forcing deathmatch.");
 		gi.cvar_set("deathmatch", "1");
 	}
 	//force coop off
@@ -255,7 +255,7 @@ void WriteField1 (FILE *f, field_t *field, byte *base)
 	case F_LSTRING:
 	case F_GSTRING:
 		if ( *(char **)p )
-			len = strlen(*(char **)p) + 1;
+			len = (int)strlen(*(char **)p) + 1;
 		else
 			len = 0;
 		*(int *)p = len;
@@ -299,7 +299,7 @@ void WriteField2 (FILE *f, field_t *field, byte *base)
 	case F_GSTRING:
 		if ( *(char **)p )
 		{
-			len = strlen(*(char **)p) + 1;
+			len = (int)strlen(*(char **)p) + 1;
 			fwrite (*(char **)p, len, 1, f);
 		}
 		break;
@@ -689,11 +689,6 @@ void ReadLevel (char *filename)
 
 	// check function pointer base address
 	fread (&base, sizeof(base), 1, f);
-	if (base != (void *)InitGame)
-	{
-		fclose (f);
-		gi.error ("ReadLevel: function pointers have moved");
-	}
 
 	// load the level locals
 	ReadLevelLocals (f);

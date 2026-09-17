@@ -32,7 +32,6 @@ static int	sound_pain2;
 static int	sound_pain3;
 static int	sound_search1;
 static int	sound_rail;
-static int	sound_sight;
 
 static unsigned long shotsfired;
 
@@ -197,6 +196,7 @@ int WidowTorso (edict_t *self)
 	else if (enemy_yaw <= -33.75)
 		return FRAME_fired07;
 */
+	return 0;
 }
 
 #define	VARIANCE 15.0
@@ -652,7 +652,7 @@ void WidowRail (edict_t *self)
 	vec3_t	start;
 	vec3_t	dir;
 	vec3_t	forward, right;
-	int		flash;
+	int		flash = 0;
 
 //	gi.dprintf ("railing!\n");
 	AngleVectors (self->s.angles, forward, right, NULL);
@@ -1412,7 +1412,7 @@ qboolean Widow_CheckAttack (edict_t *self)
 {
 	vec3_t	spot1, spot2;
 	vec3_t	temp;
-	float	chance;
+	float	chance = 0.f;
 	trace_t	tr;
 	qboolean	enemy_infront;
 	int			enemy_range;
@@ -1605,7 +1605,7 @@ void WidowCalcSlots (edict_t *self)
 //		gi.dprintf ("number of slots changed from %d to %d\n", old_slots, self->monsterinfo.monster_slots);
 }
 
-void WidowPrecache ()
+void WidowPrecache (void)
 {
 	// cache in all of the stalker stuff, widow stuff, spawngro stuff, gibs
 	gi.soundindex ("stalker/pain.wav");	

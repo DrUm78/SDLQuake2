@@ -902,7 +902,7 @@
 {"use_target_skill", (byte *)use_target_skill},
 {"SP_target_clone", (byte *)SP_target_clone},
 {"target_clone_starton", (byte *)target_clone_starton},
-{"clone", (byte *)clone},
+{"SP_clone", (byte *)SP_clone},
 {"SP_target_fade", (byte *)SP_target_fade},
 {"use_target_fade", (byte *)use_target_fade},
 {"SP_target_sky", (byte *)SP_target_sky},

@@ -188,7 +188,7 @@ void DeathmatchScoreboardMessage (edict_t *ent, edict_t *killer)
 	// print level name and exit rules
 	string[0] = 0;
 
-	stringlength = strlen(string);
+	stringlength = (int)strlen(string);
 
 	// add the clients in sorted order
 	if (total > 12)
@@ -226,7 +226,7 @@ void DeathmatchScoreboardMessage (edict_t *ent, edict_t *killer)
 		{
 			Com_sprintf (entry, sizeof(entry),
 				"xv %i yv %i picn %s ",x+32, y, tag);
-			j = strlen(entry);
+			j = (int)strlen(entry);
 			if (stringlength + j > 1024)
 				break;
 			strcpy (string + stringlength, entry);
@@ -237,7 +237,7 @@ void DeathmatchScoreboardMessage (edict_t *ent, edict_t *killer)
 		Com_sprintf (entry, sizeof(entry),
 			"client %i %i %i %i %i %i ",
 			x, y, sorted[i], cl->resp.score, cl->ping, (level.framenum - cl->resp.enterframe)/600);
-		j = strlen(entry);
+		j = (int)strlen(entry);
 		if (stringlength + j > 1024)
 			break;
 		strcpy (string + stringlength, entry);
@@ -375,7 +375,7 @@ G_SetStats
 void G_SetStats (edict_t *ent)
 {
 	gitem_t		*item;
-	int			index, cells;
+	int			index, cells = 0;
 	int			power_armor_type;
 
 	//
@@ -538,7 +538,7 @@ void G_SetStats (edict_t *ent)
 	//
 	if (ent->client->pers.helpchanged && (level.framenum&8) )
 		ent->client->ps.stats[STAT_HELPICON] = gi.imageindex ("i_help");
-	else if ( (ent->client->pers.hand == CENTER_HANDED || ent->client->ps.fov > 91)
+	else if ( (ent->client->pers.hand == CENTER_HANDED)
 		&& ent->client->pers.weapon)
 		ent->client->ps.stats[STAT_HELPICON] = gi.imageindex (ent->client->pers.weapon->icon);
 	else

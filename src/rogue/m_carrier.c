@@ -1085,7 +1085,7 @@ qboolean Carrier_CheckAttack (edict_t *self)
 {
 	vec3_t	spot1, spot2;
 	vec3_t	temp;
-	float	chance;
+	float	chance = 0.f;
 	trace_t	tr;
 	qboolean	enemy_infront, enemy_inback, enemy_below;
 	int			enemy_range;
@@ -1193,7 +1193,7 @@ qboolean Carrier_CheckAttack (edict_t *self)
 	return false;
 }
 
-void CarrierPrecache ()
+void CarrierPrecache (void)
 {
 	gi.soundindex ("flyer/flysght1.wav");
 	gi.soundindex ("flyer/flysrch1.wav");
