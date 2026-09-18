@@ -187,8 +187,6 @@ static void ResetDefaults( void *unused )
 	Cvar_SetValue( "vid_gamma", 0.9 );
 	Cvar_SetValue( "sw_stipplealpha", 0 );
 	Cvar_SetValue( "vid_vsync", 0 );
-	Cvar_SetValue( "r_lightsaturation", 0 );
-	Cvar_SetValue( "r_coloredlights", 0 );
 	Cvar_SetValue( "cl_drawfps", 0 );
 	Cvar_SetValue( "cl_drawclock", 0 );
 

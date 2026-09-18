@@ -88,7 +88,7 @@ void	Draw_8to24(byte *palette)
 }
 
 // leilei - Colored Lights
-byte	palmap2[64][64][64];		// Higher quality for lighting
+byte	palmap2[32][32][32];		// Colored Lighting Lookup Table
 
 //Sys_Error("butts");
 // this is just a lookup table version of the above
@@ -186,11 +186,11 @@ void Draw_InitRGBMap(void)
 
 	{
 		Draw_8to24((byte *)d_8to24table);
-		for (r = 0; r < 256; r += 4)
+		for (r = 0; r < 256; r += 8)
 		{
-			for (g = 0; g < 256; g += 4)
+			for (g = 0; g < 256; g += 8)
 			{
-				for (b = 0; b < 256; b += 4)
+				for (b = 0; b < 256; b += 8)
 				{
 					// 3dfx gamma hack, trying to match the saturation and gamma of the refgl+3dfxgl combo so many q2 players are familiar with
 
@@ -205,7 +205,7 @@ void Draw_InitRGBMap(void)
 					//beastcolor = BestColor (pow(ra / mydiv, mypow) * mydiv, pow(ga / mydiv, mypow) * mydiv, pow(ba / mydiv, mypow) * mydiv, 1, 254);
 					beastcolor = BestColor((int)ra, (int)ga, (int)ba, 1, 254);
 					//beastcolor = BestColor (ra, ga, ba, 1, 254);
-					palmap2[r >> 2][g >> 2][b >> 2] = beastcolor;
+					palmap2[r >> 3][g >> 3][b >> 3] = beastcolor;
 
 				}
 			}

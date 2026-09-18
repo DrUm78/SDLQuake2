@@ -487,7 +487,7 @@ void R_PolysetUpdateTables (void);
 extern void *acolormap; // FIXME: should go away
 
 //qb: leilei - colored lighting
-extern byte	palmap2[64][64][64];		//  Colored Lighting Lookup Table
+extern byte	palmap2[32][32][32];		//  Colored Lighting Lookup Table
 
 void R_AliasClipTriangleRGB(finalvert_t *index0, finalvert_t *index1, finalvert_t *index2);
 

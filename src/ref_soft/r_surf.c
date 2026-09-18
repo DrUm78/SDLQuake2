@@ -69,8 +69,8 @@ int		lightrighta[3], lightleftstepa[3], lightrightstepa[3], blockdivshift;
 
 // High Colored Light Quality //qb: preserve alphatest
 #define MIP8RGBX(i) {  	pix = psource[i]; if(pix == 255) prowdest[i] = 255; else{pix24 = (unsigned char *)&d_8to24table[pix];   \
-	trans[0] = (pix24[0] * (light[0])) >> 17; trans[1] = (pix24[1] * (light[1])) >> 17; trans[2] = (pix24[2] * (light[2])) >> 17; \
-if (trans[0] & ~63) trans[0] = 63; if (trans[1] & ~63) trans[1] = 63; if (trans[2] & ~63) trans[2] = 63; prowdest[i] = palmap2[trans[0]][trans[1]][trans[2]]; }}
+	trans[0] = (pix24[0] * (light[0])) >> 18; trans[1] = (pix24[1] * (light[1])) >> 18; trans[2] = (pix24[2] * (light[2])) >> 18; \
+if (trans[0] & ~31) trans[0] = 31; if (trans[1] & ~31) trans[1] = 31; if (trans[2] & ~31) trans[2] = 31; prowdest[i] = palmap2[trans[0]][trans[1]][trans[2]]; }}
 
 #define Mip0Stuff(i) { MakeLightDelta(); i(15); PushLightDelta(); i(14); PushLightDelta(); PushLightDelta(); i(13); PushLightDelta(); i(12); PushLightDelta(); i(11); PushLightDelta(); i(10); PushLightDelta(); i(9); PushLightDelta(); i(8); PushLightDelta(); i(7); PushLightDelta(); i(6); PushLightDelta(); i(5); PushLightDelta(); i(4); PushLightDelta(); i(3); PushLightDelta(); i(2); PushLightDelta(); i(1); PushLightDelta(); i(0);  FinishLightDelta();}
 #define Mip1Stuff(i) { MakeLightDelta(); i(7); PushLightDelta(); i(6); PushLightDelta(); i(5); PushLightDelta(); i(4); PushLightDelta(); i(3); PushLightDelta(); i(2); PushLightDelta(); i(1); PushLightDelta(); i(0); FinishLightDelta();}
@@ -95,7 +95,7 @@ static void	(*surfmiptable8RGB[4])(void) =
 
 //extern	int			host_fullbrights;   // for preserving fullbrights in color operations
 //extern byte		*lmmap;
-extern byte	palmap2[64][64][64];		//  Colored Lighting Lookup Table
+extern byte	palmap2[32][32][32];		//  Colored Lighting Lookup Table
 
 
 
