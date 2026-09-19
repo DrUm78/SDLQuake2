@@ -907,7 +907,10 @@ void R_AliasSetupLighting (void)
 	}
 	else
 	{
+		if (coloredlights)
 			R_LightPointColor(currententity->origin, shadelight);
+		else
+			R_LightPoint(currententity->origin, shadelight);
 	}
 
 	// save off light value for server to look at (BIG HACK!)
@@ -1068,6 +1071,7 @@ R_AliasDrawModel
 void R_AliasDrawModel (void)
 {
 	extern void	(*d_pdrawspans)(void *);
+	extern void R_PolysetDrawSpans8_Opaque(void *);
 	extern void R_PolysetDrawSpans8_Opaque_Coloured(void *);
 	extern void R_PolysetDrawSpans8_33( void * );
 	extern void R_PolysetDrawSpans8_66( void * );
@@ -1183,7 +1187,10 @@ void R_AliasDrawModel (void)
 	else if ( currententity->flags & RF_TRANSLUCENT )
 	{
 		if ( currententity->alpha > 0.66 )
-			d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
+			if (coloredlights)
+				d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
+			else
+				d_pdrawspans = R_PolysetDrawSpans8_Opaque;
 		else if ( currententity->alpha > 0.33 )
 			d_pdrawspans = R_PolysetDrawSpans8_66;
 		else
@@ -1191,7 +1198,10 @@ void R_AliasDrawModel (void)
 	}
 	else
 	{
-		d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
+		if (coloredlights)
+			d_pdrawspans = R_PolysetDrawSpans8_Opaque_Coloured;
+		else
+			d_pdrawspans = R_PolysetDrawSpans8_Opaque;
 	}
 
 	/*
