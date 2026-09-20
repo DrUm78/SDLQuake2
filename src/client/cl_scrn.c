@@ -1348,7 +1348,7 @@ void SCR_UpdateScreen (void)
 	  if (scr_draw_loading == 2)
 	    {	//  loading plaque over black screen
 	      int		w, h;
-	      
+
 	      re.CinematicSetPalette(NULL);
 	      scr_draw_loading = false;
 	      re.DrawGetPicSize (&w, &h, "loading");
@@ -1398,54 +1398,68 @@ void SCR_UpdateScreen (void)
 		  re.CinematicSetPalette(NULL);
 		  cl.cinematicpalette_active = false;
 		}
-	      
+
 	      // do 3D refresh drawing, and then update the screen
 	      SCR_CalcVrect ();
-	      
+
 	      // clear any dirty part of the background
 	      SCR_TileClear ();
-	      
+
 	      V_RenderView ( separation[i] );
-	      
+
 	      SCR_DrawStats ();
 	      if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 1)
 		SCR_DrawLayout ();
 	      if (cl.frame.playerstate.stats[STAT_LAYOUTS] & 2)
 		CL_DrawInventory ();
-	      
+
 	      SCR_DrawNet ();
 	      SCR_CheckDrawCenterString ();
-	      
+
 	      if(cl_drawclock->value)
 		{
 		  time_t t = time( NULL );
 		  char stime[32];
 		  strftime( stime, sizeof(stime), cl_timeformat->string ,
-			    localtime(&t));	      
-	      
+			    localtime(&t));
+
 		  DrawString(5, viddef.height-64, stime);
 		}	
 
-	      // FPS counter hack 
-	      // http://www.quakesrc.org/?Page=tutorials&What=./tutorials/Quake2/misc/fps.txt
-	      if (cl_drawfps->value) {
-		char s[8];
-		sprintf(s,"%3.0ffps", 1/cls.frametime);
-		DrawString(viddef.width-64,0,s);
-	      }
-	      
+		// FPS counter hack
+		if (cl_drawfps->value) {
+			static int  frames = 0;
+			static int  lasttime = 0;
+			static char s[16];
+			int now = Sys_Milliseconds();
+			int x = viddef.width - (int)strlen(s) * 8 - 5;
+
+			frames++;
+			if (now - lasttime >= 1000) {
+				sprintf(s, "%3.0ffps", frames * 1000.0f / (now - lasttime));
+				frames = 0;
+				lasttime = now;
+			}
+
+			// set the area to clear by SCR_TileClear at next frames
+			SCR_AddDirtyPoint(x, 0);
+			SCR_AddDirtyPoint(x + (int)strlen(s) * 8, 8);
+
+			DrawString(x, 0, s);
+		}
+
 	      if (scr_timegraph->value)
 		SCR_DebugGraph (cls.frametime*300, 0);
-	      
+
 	      if (scr_debuggraph->value || scr_timegraph->value || scr_netgraph->value)
 		SCR_DrawDebugGraph ();
-	      
+
 	      SCR_DrawPause ();
-	      
+
 	      SCR_DrawConsole ();
-	      
+
 	      M_Draw ();
-	      
+
 	      SCR_DrawLoading ();
 	    }
 	}

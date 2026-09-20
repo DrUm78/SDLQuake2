@@ -1405,7 +1405,7 @@ void Options_MenuInit( void )
 	s_options_dpad_sensitivity_slider.generic.type	= MTYPE_SLIDER;
 	s_options_dpad_sensitivity_slider.generic.x		= 0;
 	s_options_dpad_sensitivity_slider.generic.y		= 60;
-	s_options_dpad_sensitivity_slider.generic.name	= "D-pad speed";
+	s_options_dpad_sensitivity_slider.generic.name	= "d-pad speed";
 	s_options_dpad_sensitivity_slider.generic.callback = DpadSpeedFunc;
 	s_options_dpad_sensitivity_slider.minvalue		= 0;
 	s_options_dpad_sensitivity_slider.maxvalue		= 13;
