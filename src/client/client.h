@@ -270,6 +270,9 @@ extern	cvar_t	*cl_stereo_separation;
 extern	cvar_t	*cl_stereo;
 
 extern	cvar_t	*cl_gun;
+extern	cvar_t	*gun_x;
+extern	cvar_t	*gun_y;
+extern	cvar_t	*gun_z;
 extern	cvar_t	*cl_add_blend;
 extern	cvar_t	*cl_add_lights;
 extern	cvar_t	*cl_add_particles;

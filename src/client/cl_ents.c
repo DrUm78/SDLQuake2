@@ -1352,6 +1352,8 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 	entity_t	gun;		// view model
 	int			i;
 
+	extern cvar_t *hand;
+
 	// allow the gun to be completely removed
 	if (!cl_gun->value)
 		return;
@@ -1390,6 +1392,19 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 			gun.oldframe = 0;	// just changed weapons, don't lerp from old
 		else
 			gun.oldframe = ops->gunframe;
+	}
+
+	// centered weapon position
+	if (hand->value == 2.0F)
+	{
+		vec3_t r, f, u;
+		AngleVectors (cl.refdef.viewangles, f, r, u);
+		for (i=0 ; i<3 ; i++)
+		{
+			gun.origin[i] += r[i] * gun_x->value;
+			gun.origin[i] += f[i] * gun_y->value;
+			gun.origin[i] += u[i] * gun_z->value;
+		}
 	}
 
 	gun.flags = RF_MINLIGHT | RF_DEPTHHACK | RF_WEAPONMODEL;

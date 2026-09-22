@@ -380,12 +380,13 @@ void SV_CalcGunOffset (edict_t *ent)
 //	ent->ps->gunorigin[2] += bob;
 
 	// gun_x / gun_y / gun_z are development tools
-	for (i=0 ; i<3 ; i++)
+	// move this part on client side for the centered weapon
+	/*for (i=0 ; i<3 ; i++)
 	{
 		ent->client->ps.gunoffset[i] += forward[i]*(gun_y->value);
 		ent->client->ps.gunoffset[i] += right[i]*gun_x->value;
 		ent->client->ps.gunoffset[i] += up[i]* (-gun_z->value);
-	}
+	}*/
 }
 
 

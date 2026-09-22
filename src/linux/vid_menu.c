@@ -51,7 +51,9 @@ extern cvar_t *vid_ref;
 extern cvar_t *vid_fullscreen;
 extern cvar_t *vid_gamma;
 extern cvar_t *vid_vsync;
+
 extern cvar_t *scr_viewsize;
+
 extern cvar_t *cl_drawfps; // FPS hack
 extern cvar_t *cl_drawclock;
 
@@ -62,6 +64,8 @@ static cvar_t *gl_ext_palettedtexture;
 
 static cvar_t *sw_mode;
 static cvar_t *sw_stipplealpha;
+static cvar_t *sw_transmooth;
+
 static cvar_t *r_coloredlights;
 static cvar_t *r_lightsaturation;
 
@@ -91,9 +95,10 @@ static menuslider_s		s_tq_slider;
 static menuslider_s		s_screensize_slider[2];
 static menuslider_s		s_brightness_slider[2];
 static menulist_s  		s_fs_box[2];
-static menulist_s  		s_stipple_box;
+static menulist_s  		s_stipplealpha_box;
+static menulist_s  		s_transmooth_box;
 static menulist_s  		s_vid_vsync;
-static menulist_s  		s_vid_rgblight;
+static menulist_s  		s_vid_colorlight;
 static menulist_s  		s_draw_fps;
 static menulist_s  		s_draw_clock;
 static menulist_s  		s_paletted_texture_box;
@@ -147,7 +152,12 @@ static void BrightnessCallback( void *s )
 
 static void StippleAlphaCallback( void *unused )
 {
-	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
+	Cvar_SetValue( "sw_stipplealpha", s_stipplealpha_box.curvalue );
+}
+
+static void TranSmoothCallback( void *unused )
+{
+	Cvar_SetValue( "sw_transmooth", s_transmooth_box.curvalue );
 }
 
 static void VsyncCallback( void *unused )
@@ -155,9 +165,9 @@ static void VsyncCallback( void *unused )
 	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
 }
 
-static void RGBLightCallback( void *unused )
+static void ColorLightCallback( void *unused )
 {
-	if ( s_vid_rgblight.curvalue )
+	if ( s_vid_colorlight.curvalue )
 	{
 		Cvar_SetValue( "r_lightsaturation", 1 );
 		Cvar_SetValue( "r_coloredlights",   2 );
@@ -186,6 +196,7 @@ static void ResetDefaults( void *unused )
 	Cvar_SetValue( "viewsize", 100 );
 	Cvar_SetValue( "vid_gamma", 0.9 );
 	Cvar_SetValue( "sw_stipplealpha", 0 );
+	Cvar_SetValue( "sw_transmooth", 0 );
 	Cvar_SetValue( "vid_vsync", 0 );
 	Cvar_SetValue( "cl_drawfps", 0 );
 	Cvar_SetValue( "cl_drawclock", 0 );
@@ -211,7 +222,8 @@ static void ApplyChanges( void *unused )
 	gamma = ( 0.8 - ( s_brightness_slider[s_current_menu_index].curvalue/10.0 - 0.5 ) ) + 0.5;
 
 	Cvar_SetValue( "vid_gamma", gamma );
-	Cvar_SetValue( "sw_stipplealpha", s_stipple_box.curvalue );
+	Cvar_SetValue( "sw_stipplealpha", s_stipplealpha_box.curvalue );
+	Cvar_SetValue( "sw_transmooth", s_transmooth_box.curvalue );
 	Cvar_SetValue( "vid_vsync", s_vid_vsync.curvalue );
 	Cvar_SetValue( "cl_drawfps", s_draw_fps.curvalue );
 	Cvar_SetValue( "cl_drawclock", s_draw_clock.curvalue );
@@ -222,7 +234,7 @@ static void ApplyChanges( void *unused )
 	Cvar_SetValue( "gl_mode", s_mode_list[OPENGL_MENU].curvalue );
 	Cvar_SetValue( "_windowed_mouse", s_windowed_mouse.curvalue);
 
-	if ( s_vid_rgblight.curvalue )
+	if ( s_vid_colorlight.curvalue )
 	{
 		Cvar_SetValue( "r_lightsaturation", 1 );
 		Cvar_SetValue( "r_coloredlights", 2 );
@@ -392,6 +404,9 @@ void VID_MenuInit( void )
 	if ( !sw_stipplealpha )
 		sw_stipplealpha = Cvar_Get( "sw_stipplealpha", "0", CVAR_ARCHIVE );
 
+	if ( !sw_transmooth )
+		sw_transmooth = Cvar_Get( "sw_transmooth", "0", CVAR_ARCHIVE );
+
 	if ( !vid_vsync )
 		vid_vsync = Cvar_Get( "vid_vsync", "0", CVAR_ARCHIVE );
 
@@ -511,43 +526,51 @@ void VID_MenuInit( void )
 		s_defaults_action[i].generic.type = MTYPE_ACTION;
 		s_defaults_action[i].generic.name = "reset to defaults";
 		s_defaults_action[i].generic.x    = 0;
-		s_defaults_action[i].generic.y    = 100;
+		s_defaults_action[i].generic.y    = 110;
 		s_defaults_action[i].generic.callback = ResetDefaults;
 
 		s_apply_action[i].generic.type = MTYPE_ACTION;
 		s_apply_action[i].generic.name = "apply";
 		s_apply_action[i].generic.x    = 0;
-		s_apply_action[i].generic.y    = 110;
+		s_apply_action[i].generic.y    = 120;
 		s_apply_action[i].generic.callback = ApplyChanges;
 	}
 
-	s_stipple_box.generic.type = MTYPE_SPINCONTROL;
-	s_stipple_box.generic.x	= 0;
-	s_stipple_box.generic.y	= 40;
-	s_stipple_box.generic.name	= "stipple alpha";
-	s_stipple_box.generic.callback = StippleAlphaCallback;
-	s_stipple_box.curvalue = sw_stipplealpha->value;
-	s_stipple_box.itemnames = yesno_names;
+	s_stipplealpha_box.generic.type = MTYPE_SPINCONTROL;
+	s_stipplealpha_box.generic.x	= 0;
+	s_stipplealpha_box.generic.y	= 40;
+	s_stipplealpha_box.generic.name	= "stipple alpha";
+	s_stipplealpha_box.generic.callback = StippleAlphaCallback;
+	s_stipplealpha_box.curvalue = sw_stipplealpha->value;
+	s_stipplealpha_box.itemnames = yesno_names;
+
+	s_transmooth_box.generic.type = MTYPE_SPINCONTROL;
+	s_transmooth_box.generic.x	= 0;
+	s_transmooth_box.generic.y	= 50;
+	s_transmooth_box.generic.name	= "dither alpha";
+	s_transmooth_box.generic.callback = TranSmoothCallback;
+	s_transmooth_box.curvalue = sw_transmooth->value;
+	s_transmooth_box.itemnames = yesno_names;
 
 	s_vid_vsync.generic.type = MTYPE_SPINCONTROL;
 	s_vid_vsync.generic.x	= 0;
-	s_vid_vsync.generic.y	= 50;
+	s_vid_vsync.generic.y	= 60;
 	s_vid_vsync.generic.name	= "vertical sync";
 	s_vid_vsync.generic.callback = VsyncCallback;
 	s_vid_vsync.curvalue = vid_vsync->value;
 	s_vid_vsync.itemnames = yesno_names;
 
-	s_vid_rgblight.generic.type = MTYPE_SPINCONTROL;
-	s_vid_rgblight.generic.x	= 0;
-	s_vid_rgblight.generic.y	= 60;
-	s_vid_rgblight.generic.name	= "rgb lighting";
-	s_vid_rgblight.generic.callback = RGBLightCallback;
-	s_vid_rgblight.curvalue = ( r_coloredlights->value > 0 ) ? 1 : 0;
-	s_vid_rgblight.itemnames = yesno_names;
+	s_vid_colorlight.generic.type = MTYPE_SPINCONTROL;
+	s_vid_colorlight.generic.x	= 0;
+	s_vid_colorlight.generic.y	= 70;
+	s_vid_colorlight.generic.name	= "color light";
+	s_vid_colorlight.generic.callback = ColorLightCallback;
+	s_vid_colorlight.curvalue = ( r_coloredlights->value > 0 ) ? 1 : 0;
+	s_vid_colorlight.itemnames = yesno_names;
 
 	s_draw_fps.generic.type = MTYPE_SPINCONTROL;
 	s_draw_fps.generic.x	= 0;
-	s_draw_fps.generic.y	= 70;
+	s_draw_fps.generic.y	= 80;
 	s_draw_fps.generic.name	= "show fps";
 	s_draw_fps.generic.callback = DrawFPSCallback;
 	s_draw_fps.curvalue = cl_drawfps->value;
@@ -555,7 +578,7 @@ void VID_MenuInit( void )
 
 	s_draw_clock.generic.type = MTYPE_SPINCONTROL;
 	s_draw_clock.generic.x	= 0;
-	s_draw_clock.generic.y	= 80;
+	s_draw_clock.generic.y	= 90;
 	s_draw_clock.generic.name	= "show clock";
 	s_draw_clock.generic.callback = DrawClockCallback;
 	s_draw_clock.curvalue = cl_drawclock->value;
@@ -594,9 +617,10 @@ void VID_MenuInit( void )
 	Menu_AddItem( &s_software_menu, ( void * ) &s_screensize_slider[SOFTWARE_MENU] );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_brightness_slider[SOFTWARE_MENU] );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_fs_box[SOFTWARE_MENU] );
-	Menu_AddItem( &s_software_menu, ( void * ) &s_stipple_box );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_stipplealpha_box );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_transmooth_box );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_vsync );
-	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_rgblight );
+	Menu_AddItem( &s_software_menu, ( void * ) &s_vid_colorlight );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_fps );
 	Menu_AddItem( &s_software_menu, ( void * ) &s_draw_clock );
 	//Menu_AddItem( &s_software_menu, ( void * ) &s_windowed_mouse );

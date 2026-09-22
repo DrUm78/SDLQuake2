@@ -1087,8 +1087,9 @@ void R_AliasDrawModel (void)
 	{
 		if ( r_lefthand->value == 1.0F )
 			aliasxscale = -aliasxscale;
-		else if ( r_lefthand->value == 2.0F )
-			return;
+		// make the centered weapon appear
+		/*else if ( r_lefthand->value == 2.0F )
+			return;*/
 	}
 
 	/*

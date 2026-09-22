@@ -1298,6 +1298,7 @@ void R_PolysetDrawSpans8_Opaque_Coloured(spanpackage_t *pspanpackage)
 //PGM
 					if(r_newrefdef.rdflags & RDF_IRGOGGLES && currententity->flags & RF_IR_VISIBLE)
 						*lpdest = ((byte *)vid.colormap)[irtable[*lptex]];
+#ifdef COLMODEL
 					// leilei - colored lights begin
 					else if (coloredlights)
 					{
@@ -1310,6 +1311,7 @@ void R_PolysetDrawSpans8_Opaque_Coloured(spanpackage_t *pspanpackage)
 
 						*lpdest = palmap2[trans[0]][trans[1]][trans[2]];
 					}	// leilei - colored lights end
+#endif
 					else *lpdest = ((byte *)vid.colormap)[*lptex + (llight & 0xFF00)];
 
 					//PGM

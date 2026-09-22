@@ -683,13 +683,6 @@ void R_DrawSurfaceBlock8_mip3 (void);
 
 #endif
 
-//	leilei  - colored lighting
-void R_DrawSurfaceBlock8RGB_mip0 (void);
-void R_DrawSurfaceBlock8RGB_mip1 (void);
-void R_DrawSurfaceBlock8RGB_mip2 (void);
-void R_DrawSurfaceBlock8RGB_mip3 (void);
-//  o^_^o
-
 
 void R_GenSkyTile (void *pdest);
 void R_GenSkyTile16 (void *pdest);

@@ -55,10 +55,12 @@ void R_Alias_clip_z (finalvert_t *pfv0, finalvert_t *pfv1, finalvert_t *out)
 	out->s =	pfv0->s + (pfv1->s - pfv0->s) * scale;
 	out->t =	pfv0->t + (pfv1->t - pfv0->t) * scale;
 	out->l =	pfv0->l + (pfv1->l - pfv0->l) * scale;
+#ifdef COLMODEL
 //qb: colored lighting from leilei
 	out->lr =	pfv0->lr + (pfv1->lr - pfv0->lr) * scale;
 	out->lg =	pfv0->lg + (pfv1->lg - pfv0->lg) * scale;
 	out->lb =	pfv0->lb + (pfv1->lb - pfv0->lb) * scale;
+#endif
 
 	R_AliasProjectAndClipTestFinalVert (out);
 }
@@ -199,9 +201,11 @@ void R_Alias_clip_bottom (finalvert_t *pfv0, finalvert_t *pfv1,
 		out->t  = pfv0->t  + ( pfv1->t  - pfv0->t ) * scale + 0.5;
 		out->l  = pfv0->l  + ( pfv1->l  - pfv0->l ) * scale + 0.5;
 		out->zi = pfv0->zi + ( pfv1->zi - pfv0->zi) * scale + 0.5;
+#ifdef COLMODEL
 		out->lr  = pfv0->lr  + ( pfv1->lr  - pfv0->lr ) * scale + 0.5;
 		out->lg  = pfv0->lg  + ( pfv1->lg  - pfv0->lg ) * scale + 0.5;
 		out->lb  = pfv0->lb  + ( pfv1->lb  - pfv0->lb ) * scale + 0.5;
+#endif
 	}
 	else
 	{
@@ -214,9 +218,11 @@ void R_Alias_clip_bottom (finalvert_t *pfv0, finalvert_t *pfv1,
 		out->t  = pfv1->t  + ( pfv0->t  - pfv1->t ) * scale + 0.5;
 		out->l  = pfv1->l  + ( pfv0->l  - pfv1->l ) * scale + 0.5;
 		out->zi = pfv1->zi + ( pfv0->zi - pfv1->zi) * scale + 0.5;
+#ifdef COLMODEL
 		out->lr  = pfv1->lr  + ( pfv0->lr  - pfv1->lr ) * scale + 0.5;
 		out->lg  = pfv1->lg  + ( pfv0->lg  - pfv1->lg ) * scale + 0.5;
 		out->lb  = pfv1->lb  + ( pfv0->lb  - pfv1->lb ) * scale + 0.5;
+#endif
 	}
 }
 

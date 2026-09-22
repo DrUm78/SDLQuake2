@@ -518,7 +518,8 @@ void G_SetStats (edict_t *ent)
 		//JohnnyonFlame: Don't show help icon, instead we're going to send the client a message!
 		//ent->client->ps.stats[STAT_HELPICON] = gi.imageindex ("i_help");
 	}
-	else if ( (ent->client->pers.hand == CENTER_HANDED || ent->client->ps.fov > 91)
+	// no icon as we want to show the centered weapon
+	else if ( (/*ent->client->pers.hand == CENTER_HANDED || */ent->client->ps.fov > 91)
 		&& ent->client->pers.weapon)
 		ent->client->ps.stats[STAT_HELPICON] = gi.imageindex (ent->client->pers.weapon->icon);
 	else
