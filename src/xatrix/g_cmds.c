@@ -572,7 +572,7 @@ void Cmd_WeapPrev_f (edict_t *ent)
 	// scan  for the next valid one
 	for (i=1 ; i<=MAX_ITEMS ; i++)
 	{
-		index = (selected_weapon + i)%MAX_ITEMS;
+		index = (selected_weapon + MAX_ITEMS - i)%MAX_ITEMS;
 		if (!cl->pers.inventory[index])
 			continue;
 		it = &itemlist[index];
@@ -581,8 +581,8 @@ void Cmd_WeapPrev_f (edict_t *ent)
 		if (! (it->flags & IT_WEAPON) )
 			continue;
 		it->use (ent, it);
-		if (cl->pers.weapon == it)
-			return;	// successful
+		if (cl->newweapon == it)
+			return;
 	}
 }
 
@@ -609,7 +609,7 @@ void Cmd_WeapNext_f (edict_t *ent)
 	// scan  for the next valid one
 	for (i=1 ; i<=MAX_ITEMS ; i++)
 	{
-		index = (selected_weapon + MAX_ITEMS - i)%MAX_ITEMS;
+		index = (selected_weapon + i)%MAX_ITEMS;
 		if (!cl->pers.inventory[index])
 			continue;
 		it = &itemlist[index];
@@ -618,8 +618,8 @@ void Cmd_WeapNext_f (edict_t *ent)
 		if (! (it->flags & IT_WEAPON) )
 			continue;
 		it->use (ent, it);
-		if (cl->pers.weapon == it)
-			return;	// successful
+		if (cl->newweapon == it)
+			return;
 	}
 }
 #endif
@@ -640,7 +640,7 @@ void Cmd_WeapNext_f (edict_t *ent)
 	// scan  for the next valid one
 	for (i=1 ; i<=MAX_ITEMS ; i++)
 	{
-		index = (selected_weapon + MAX_ITEMS - i)%MAX_ITEMS;
+		index = (selected_weapon + i)%MAX_ITEMS;
 		
 		if (!cl->pers.inventory[index])
 			continue;
@@ -650,8 +650,8 @@ void Cmd_WeapNext_f (edict_t *ent)
 		if (! (it->flags & IT_WEAPON) )
 			continue;
 		it->use (ent, it);
-		if (cl->pers.weapon == it)
-			return;	// successful
+		if (cl->newweapon == it)
+			return;
 	}
 }
 

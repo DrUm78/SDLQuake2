@@ -184,6 +184,365 @@ keyname_t keynames_clean[] =
 /*
 ==============================================================================
 
+			VIRTUAL KEYBOARD (gamepad-only console typing)
+
+	Character grid navigable with the D-pad, meant for handheld consoles
+	with no physical keyboard. Reuses the existing mapping defined in
+	keynames_clean:
+		D-pad           -> moves the cursor around the grid
+		A (CTRL)        -> types the selected character
+		B (ALT)         -> backspace
+		X (SPACE)       -> space
+		Y (SHIFT)       -> toggles uppercase/lowercase
+		L1 (TAB)        -> complete command
+		R1 (BACKSPACE)  -> next page (letters <-> symbols)
+		L2 (PGUP)       -> console up
+		R2 (PGDN)       -> console down
+		START (ENTER)   -> closes the virtual keyboard (same as HOME)
+		SELECT (ESCAPE) -> submits the typed command, whether the
+			virtual keyboard is open or closed (see the SELECT block in
+			Key_Event), but does NOT close it -- HOME/START are what
+			close it
+		HOME            -> opens/closes the virtual keyboard (see Key_Console)
+
+	NOTE: HOME is reused here for the toggle (no L3 on this device).
+	While the virtual keyboard toggle is bound to HOME, the normal
+	"scroll backlog to top" behavior of HOME is unavailable in console
+	mode; K_KP_HOME (numpad Home) is untouched and still scrolls the
+	backlog as before.
+
+	Holding ANY of the keys above auto-repeats while the virtual
+	keyboard is open, via VKB_Think(), polled once per rendered frame
+	from Con_DrawKeyboard() in console.c, using keydown[] and
+	cls.realtime -- NOT Key_Event's own key_repeats counter, which only
+	increments on repeated down events and this gamepad backend
+	apparently never generates those for held buttons (unlike a PC
+	keyboard's OS-level autorepeat, which is what that counter was
+	originally built for). Repeat speed accelerates the longer a key is
+	held (see the VKB_REPEAT_* constants below).
+
+	Rows shorter than KB_COLS end with padding spaces so every row lines
+	up in a KB_COLS-wide grid (see kb_layout below); kb_row_len gives the
+	real number of usable keys per row, and column navigation wraps
+	within that real length rather than the full padded width, so you
+	can never land on a blank filler cell without visual feedback.
+==============================================================================
+*/
+
+#define	KB_ROWS		4
+#define	KB_COLS		10
+#define	KB_PAGES	2
+
+// how long (ms) a direction must be held before it starts repeating, the
+// interval between repeats right after that, and the interval once it
+// has been held past VKB_ACCEL_AFTER ms (faster = feels more responsive
+// when scrolling all the way across the grid)
+#define	VKB_REPEAT_DELAY	350
+#define	VKB_REPEAT_SLOW		160
+#define	VKB_REPEAT_FAST		80
+#define	VKB_ACCEL_AFTER		0
+
+qboolean	kb_active = false;
+int			kb_row = 0;
+int			kb_col = 0;
+int			kb_page = 0;
+qboolean	kb_caps = false;
+
+// each row must be exactly KB_COLS characters; a space is padding used
+// to keep every row the same width for the grid layout below -- it is
+// NOT a selectable key (see kb_row_len)
+static const char *kb_layout[KB_PAGES][KB_ROWS] =
+{
+	// page 0: alphabet + common punctuation
+	{
+		"1234567890",
+		"qwertyuiop",
+		"asdfghjkl ",
+		"zxcvbnm.: "
+	},
+	// page 1: symbols (IPs, paths, cheats...)
+	{
+		"!@#$%^&*()",
+		"-_=+[]{}\\|",
+		"/:;\"'<>,.?",
+		"~`        "
+	}
+};
+
+// number of real, selectable keys at the start of each row (the rest is
+// padding, see kb_layout above) -- keep in sync with it by hand
+static const int kb_row_len[KB_PAGES][KB_ROWS] =
+{
+	{ 10, 10, 9, 9 },
+	{ 10, 10, 10, 2 }
+};
+
+/*
+================
+VKB_GetChar
+================
+*/
+char VKB_GetChar (int page, int row, int col)
+{
+	char c = kb_layout[page][row][col];
+
+	if (kb_caps && c >= 'a' && c <= 'z')
+		c -= 32;
+
+	return c;
+}
+
+/*
+================
+Key_ConsoleActive
+================
+*/
+static qboolean Key_ConsoleActive (void)
+{
+	if (cls.key_dest == key_console)
+		return true;
+
+	return cls.key_dest == key_game && (cls.state != ca_active || cl.attractloop);
+}
+
+/*
+================
+VKB_Toggle
+================
+*/
+void VKB_Toggle (void)
+{
+	kb_active = !kb_active;
+	kb_row = 0;
+	kb_col = 0;
+}
+
+/*
+================
+VKB_InsertChar
+================
+*/
+static void VKB_InsertChar (char c)
+{
+	if (key_linepos < MAXCMDLINE - 1)
+	{
+		key_lines[edit_line][key_linepos] = c;
+		key_linepos++;
+		key_lines[edit_line][key_linepos] = 0;
+	}
+}
+
+/*
+================
+Key_ConsoleSubmit
+================
+*/
+static void Key_ConsoleSubmit (void)
+{
+	if (key_lines[edit_line][1] == '\\' || key_lines[edit_line][1] == '/')
+		Cbuf_AddText (key_lines[edit_line]+2);
+	else
+		Cbuf_AddText (key_lines[edit_line]+1);
+
+	Cbuf_AddText ("\n");
+	Com_Printf ("%s\n", key_lines[edit_line]);
+	edit_line = (edit_line + 1) & 31;
+	history_line = edit_line;
+	key_lines[edit_line][0] = ']';
+	key_linepos = 1;
+	if (cls.state == ca_disconnected)
+		SCR_UpdateScreen ();	// force an update, because the command
+								// may take some time
+}
+
+/*
+================
+VKB_ClampCol
+================
+*/
+static void VKB_ClampCol (void)
+{
+	int len = kb_row_len[kb_page][kb_row];
+
+	if (kb_col >= len)
+		kb_col = len - 1;
+}
+
+/*
+================
+VKB_MoveRow / VKB_MoveCol
+================
+*/
+static void VKB_MoveRow (int step)
+{
+	kb_row = (kb_row + step + KB_ROWS * 4) % KB_ROWS;
+	VKB_ClampCol ();
+}
+
+static void VKB_MoveCol (int step)
+{
+	int len = kb_row_len[kb_page][kb_row];
+
+	kb_col = (kb_col + step + len * 4) % len;
+}
+
+/*
+================
+VKB_HandleKey
+================
+*/
+qboolean VKB_HandleKey (int key)
+{
+	switch (key)
+	{
+	case K_UPARROW:
+	case K_KP_UPARROW:
+		VKB_MoveRow (-1);
+		return true;
+
+	case K_DOWNARROW:
+	case K_KP_DOWNARROW:
+		VKB_MoveRow (1);
+		return true;
+
+	case K_LEFTARROW:
+	case K_KP_LEFTARROW:
+		VKB_MoveCol (-1);
+		return true;
+
+	case K_RIGHTARROW:
+	case K_KP_RIGHTARROW:
+		VKB_MoveCol (1);
+		return true;
+
+	case K_CTRL:		// A button: type the selected character
+		VKB_InsertChar (VKB_GetChar (kb_page, kb_row, kb_col));
+		return true;
+
+	case K_ALT:			// B button: backspace
+		if (key_linepos > 1)
+			key_linepos--;
+		return true;
+
+	case K_SPACE:		// X button: space
+		VKB_InsertChar (' ');
+		return true;
+
+	case K_SHIFT:		// Y button: toggle uppercase/lowercase
+		kb_caps = !kb_caps;
+		return true;
+
+	case K_TAB:			// L1: complete command
+		CompleteCommand ();
+		return true;
+
+	case K_BACKSPACE:	// R1: next page
+		kb_page = (kb_page + 1) % KB_PAGES;
+		VKB_ClampCol ();
+		return true;
+
+	case K_PGUP:		// L2: console up
+	case K_KP_PGUP:
+		con.display -= 2;
+		return true;
+
+	case K_PGDN:		// R2: console down
+	case K_KP_PGDN:
+		con.display += 2;
+		if (con.display > con.current)
+			con.display = con.current;
+		return true;
+
+	case K_ENTER:
+	case K_KP_ENTER:
+		kb_active = false;
+		return true;
+
+	default:
+		return false;	// key not handled by the virtual keyboard
+	}
+}
+
+/*
+================
+VKB_Think
+================
+*/
+typedef struct
+{
+	int			key;
+	int			key_alt;		// secondary keycode for the same action, 0 if none
+	unsigned	press_time;		// cls.realtime when this key was first seen held, 0 if not held
+	unsigned	next_time;		// cls.realtime of the next scheduled repeat
+} vkb_hold_t;
+
+static vkb_hold_t vkb_holds[] =
+{
+	{ K_UPARROW,	K_KP_UPARROW,		0, 0 },
+	{ K_DOWNARROW,	K_KP_DOWNARROW,		0, 0 },
+	{ K_LEFTARROW,	K_KP_LEFTARROW,		0, 0 },
+	{ K_RIGHTARROW,	K_KP_RIGHTARROW,	0, 0 },
+	{ K_CTRL,		0,					0, 0 },		// A: type selected char
+	{ K_ALT,		0,					0, 0 },		// B: backspace
+	{ K_SPACE,		0,					0, 0 },		// X: space
+	{ K_SHIFT,		0,					0, 0 },		// Y: toggle case
+	{ K_TAB,		0,					0, 0 },		// L1: complete command
+	{ K_BACKSPACE,	0,					0, 0 },		// R1: next page (letters <-> symbols)
+	{ K_PGUP,		K_KP_PGUP,			0, 0 },		// L2: console up
+	{ K_PGDN,		K_KP_PGDN,			0, 0 },		// R2: console down
+	{ K_ENTER,		K_KP_ENTER,			0, 0 }		// START: close
+};
+
+#define	VKB_HOLD_COUNT	((int)(sizeof(vkb_holds) / sizeof(vkb_holds[0])))
+
+void VKB_Think (void)
+{
+	int			i;
+	qboolean	held;
+	unsigned	held_for, interval;
+
+	if (!kb_active)
+		return;
+
+	for (i = 0 ; i < VKB_HOLD_COUNT ; i++)
+	{
+		held = keydown[vkb_holds[i].key]
+			|| (vkb_holds[i].key_alt && keydown[vkb_holds[i].key_alt]);
+
+		if (!held)
+		{
+			vkb_holds[i].press_time = 0;
+			continue;
+		}
+
+		if (vkb_holds[i].press_time == 0)
+		{
+			vkb_holds[i].press_time = cls.realtime;
+			vkb_holds[i].next_time = cls.realtime + VKB_REPEAT_DELAY;
+			continue;
+		}
+
+		if (cls.realtime < vkb_holds[i].next_time)
+			continue;
+
+		held_for = cls.realtime - vkb_holds[i].press_time;
+		interval = (held_for > VKB_ACCEL_AFTER) ? VKB_REPEAT_FAST : VKB_REPEAT_SLOW;
+
+		VKB_HandleKey (vkb_holds[i].key);
+
+		// kb_active may have just been turned off (K_ENTER) -- stop
+		// touching state for the rest of this pass if so
+		if (!kb_active)
+			return;
+
+		vkb_holds[i].next_time = cls.realtime + interval;
+	}
+}
+
+
+/*
+==============================================================================
+
 			LINE TYPING INTO THE CONSOLE
 
 ==============================================================================
@@ -221,6 +580,11 @@ Interactive line editing and console scrollback
 */
 void Key_Console (int key)
 {
+	if (key == K_HOME)
+	{
+		VKB_Toggle ();
+		return;
+	}
 
 	switch ( key )
 	{
@@ -308,20 +672,7 @@ void Key_Console (int key)
 
 	if ( key == K_ENTER || key == K_KP_ENTER )
 	{	// backslash text are commands, else chat
-		if (key_lines[edit_line][1] == '\\' || key_lines[edit_line][1] == '/')
-			Cbuf_AddText (key_lines[edit_line]+2);	// skip the >
-		else
-			Cbuf_AddText (key_lines[edit_line]+1);	// valid command
-
-		Cbuf_AddText ("\n");
-		Com_Printf ("%s\n",key_lines[edit_line]);
-		edit_line = (edit_line + 1) & 31;
-		history_line = edit_line;
-		key_lines[edit_line][0] = ']';
-		key_linepos = 1;
-		if (cls.state == ca_disconnected)
-			SCR_UpdateScreen ();	// force an update, because the command
-									// may take some time
+		Key_ConsoleSubmit ();
 		return;
 	}
 
@@ -837,6 +1188,20 @@ void Key_Event (int key, qboolean down, unsigned time)
 		return;
 	}
 
+	if (down && Key_ConsoleActive () && kb_active)
+	{
+		keydown[key] = true;
+
+		if (VKB_HandleKey (key))
+			return;
+	}
+
+	if (down && Key_ConsoleActive () && key == K_ESCAPE)
+	{
+		Key_ConsoleSubmit ();
+		return;
+	}
+
 	// any key during the attract mode will bring up the menu
 	/*if (cl.attractloop && cls.key_dest != key_menu &&
 		!(key >= K_F1 && key <= K_F12))
@@ -845,6 +1210,8 @@ void Key_Event (int key, qboolean down, unsigned time)
 	// menu key is hardcoded, so the user can never unbind it
 	if (key == K_ENTER && !cls.disable_screen)
 	{
+		keydown[key] = down;
+
 		if (!down)
 			return;
 

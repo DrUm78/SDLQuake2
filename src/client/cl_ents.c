@@ -1340,7 +1340,39 @@ void CL_AddPacketEntities (frame_t *frame)
 	}
 }
 
+// offset by default for unrecognized weapons (mods, etc.)
+#define GUN_OFFSET_DEFAULT	{-6, 0, 0}
 
+typedef struct {
+    char	*name;
+    vec3_t	offset;	// {right, forward, up} for centered weapon only
+} center_gun_offset_t;
+
+static center_gun_offset_t center_gun_offsets[] = {
+// Quake 2 weapons
+	{"/v_blast/",		{-6.5,   0,  -1}},
+	{"/v_shotg/",		{  -8,   0,   0}},
+	{"/v_shotg2/",		{  -8,   0,  -1}},
+	{"/v_chain/",		{  -5,   0,   0}},
+	{"/v_launch/",		{  -6,   0,  -1}},
+	{"/v_rocket/",		{  -5,   0,   0}},
+	{"/v_hyperb/",		{-5.5,   0,   0}},
+	{"/v_rail/",		{-6.5,   0,  -2}},
+	{"/v_bfg/",			{  -8,   0,   0}},
+// xatrix weapons
+	{"/v_shotx/",		{  -5,   0,  -2}},
+	{"/v_boomer/",		{  -5,   0,   0}},
+// rogue weapons
+	{"/v_etf_rifle/",	{  -5,   0,   0}},
+	{"/v_plaunch/",		{  -6,   0,  -1}},
+	{"/v_beamer/",		{  -5,   0,   0}},
+	{"/v_beamer2/",		{  -5,   0,   0}},
+	{"/v_chainf/",		{  -4,   0,   0}},
+// zaero weapons
+	{"/v_sonic/",		{  -5,   0,  -1}},
+	{"/v_flare/",		{-5.5,   0,   0}},
+	{NULL,				{  -6,   0,   0}}
+};
 
 /*
 ==============
@@ -1352,11 +1384,18 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 	entity_t	gun;		// view model
 	int			i;
 
+	vec3_t	r, f, u;
+	int		j;
+	vec3_t	extra = GUN_OFFSET_DEFAULT;	// fallback for unknown weapons
+
 	extern cvar_t *hand;
 
 	// allow the gun to be completely removed
 	if (!cl_gun->value)
 		return;
+
+	//Com_Printf ("gunindex=%i model=\"%s\"\n",
+	//	ps->gunindex, cl.configstrings[CS_MODELS + ps->gunindex]);
 
 	// don't draw gun if in wide angle view
 	if (ps->fov > 90)
@@ -1395,15 +1434,38 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 	}
 
 	// centered weapon position
+
+	AngleVectors (cl.refdef.viewangles, f, r, u);
+
+	// additional offset for each weapon (centered mode only)
+	{
+		char *modelname = cl.configstrings[CS_MODELS + ps->gunindex];
+		for (j = 0; center_gun_offsets[j].name; j++)
+		{
+			if (strstr(modelname, center_gun_offsets[j].name))
+			{
+				VectorCopy (center_gun_offsets[j].offset, extra);
+				break;
+			}
+		}
+	}
+
 	if (hand->value == 2.0F)
 	{
-		vec3_t r, f, u;
-		AngleVectors (cl.refdef.viewangles, f, r, u);
 		for (i=0 ; i<3 ; i++)
 		{
-			gun.origin[i] += r[i] * gun_x->value;
-			gun.origin[i] += f[i] * gun_y->value;
-			gun.origin[i] += u[i] * gun_z->value;
+			gun.origin[i] += r[i] * (gun_x->value + extra[0]);
+			gun.origin[i] += f[i] * (gun_y->value + extra[1]);
+			gun.origin[i] += u[i] * (gun_z->value + extra[2]);
+		}
+	}
+	else
+	{
+		for (i=0 ; i<3 ; i++)
+		{
+			gun.origin[i] += r[i] * (gun_x->value);
+			gun.origin[i] += f[i] * (gun_y->value);
+			gun.origin[i] += u[i] * (gun_z->value);
 		}
 	}
 
@@ -1412,7 +1474,6 @@ void CL_AddViewWeapon (player_state_t *ps, player_state_t *ops)
 	VectorCopy (gun.origin, gun.oldorigin);	// don't lerp at all
 	V_AddEntity (&gun);
 }
-
 
 /*
 ===============

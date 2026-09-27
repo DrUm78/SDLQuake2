@@ -1459,7 +1459,7 @@ void CL_InitLocal (void)
 	cl_add_particles = Cvar_Get ("cl_particles", "1", 0);
 	cl_add_entities = Cvar_Get ("cl_entities", "1", 0);
 	cl_gun = Cvar_Get ("cl_gun", "1", 0);
-	gun_x = Cvar_Get ("gun_x", "-6", 0);
+	gun_x = Cvar_Get ("gun_x", "0", 0);
 	gun_y = Cvar_Get ("gun_y", "0", 0);
 	gun_z = Cvar_Get ("gun_z", "0", 0);
 	cl_footsteps = Cvar_Get ("cl_footsteps", "1", 0);

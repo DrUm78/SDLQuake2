@@ -30,6 +30,18 @@ cvar_t		*con_notifytime;
 extern	char	key_lines[32][MAXCMDLINE];
 extern	int		edit_line;
 extern	int		key_linepos;
+
+// virtual keyboard (defined in keys.c)
+// NOTE: KB_ROWS/KB_COLS must stay in sync with the values in keys.c;
+// should eventually move to a shared header (keys.h?).
+#define		KB_ROWS		4
+#define		KB_COLS		10
+extern	qboolean	kb_active;
+extern	int			kb_row;
+extern	int			kb_col;
+extern	int			kb_page;
+extern	char		VKB_GetChar (int page, int row, int col);
+extern	void		VKB_Think (void);
 		
 
 void DrawString (int x, int y, char *s)
@@ -99,9 +111,9 @@ void Con_ToggleConsole_f (void)
 	else
 	{
 		M_ForceMenuOff ();
-		cls.key_dest = key_console;	
+		cls.key_dest = key_console;
 
-		if (Cvar_VariableValue ("maxclients") == 1 
+		if (Cvar_VariableValue ("maxclients") == 1
 			&& Com_ServerState ())
 			Cvar_Set ("paused", "1");
 	}
@@ -585,6 +597,75 @@ void Con_DrawNotify (void)
 
 /*
 ================
+Con_DrawKeyboard
+================
+*/
+#define	KB_SCALE	2
+#define	KB_CELL		(8 * KB_SCALE)
+
+void Con_DrawKeyboard (void)
+{
+	int		row, col;
+	int		x, y;
+	int		top, baseY;
+	char	c;
+
+	if (!kb_active)
+		return;
+
+	// advance the D-pad hold/repeat timers before drawing, so a
+	// repeat that just fired is reflected in this same frame
+	VKB_Think ();
+
+	// top of the reserved area: lower half of the screen, regardless of
+	// how tall the console currently is
+	top = viddef.height / 2;
+
+	// grid starts a bit below the shortcuts reminder line, itself a bit
+	// below "top"
+	baseY = top + 52;
+
+#ifdef QMAX
+	re.DrawStretchPic (0, top, viddef.width, viddef.height - top, "conback", 1);
+#else
+	re.DrawStretchPic (0, top, viddef.width, viddef.height - top, "conback");
+#endif
+
+	// shortcuts reminder, just below the backdrop's top edge (kept at
+	// normal size so it doesn't eat into the grid's vertical space)
+	DrawString (8, top + 4, "A:select B:del X:space Y:shift");
+	DrawString (8, top + 16, "L1:complete R1:letters/symbols");
+	DrawString (8, top + 28, "SELECT:send START/HOME:close");
+
+	for (row = 0 ; row < KB_ROWS ; row++)
+	{
+		y = baseY + row * KB_CELL;
+		for (col = 0 ; col < KB_COLS ; col++)
+		{
+			c = VKB_GetChar (kb_page, row, col);
+			x = (col + 1) * KB_CELL;
+
+			if (row == kb_row && col == kb_col)
+#ifdef QMAX
+				re.DrawChar (x, y, c ^ 0x80, KB_SCALE);
+#else
+				re.DrawChar (x, y, c ^ 0x80);
+#endif
+			else
+#ifdef QMAX
+				re.DrawChar (x, y, c, KB_SCALE);
+#else
+				re.DrawChar (x, y, c);
+#endif
+		}
+	}
+
+	SCR_AddDirtyPoint (0, top);
+	SCR_AddDirtyPoint (viddef.width-1, viddef.height-1);
+}
+
+/*
+================
 Con_DrawConsole
 
 Draws the console with the solid background
@@ -717,6 +798,9 @@ void Con_DrawConsole (float frac)
 #endif
 	}
 //ZOID
+
+// virtual keyboard, if active
+	Con_DrawKeyboard ();
 
 // draw the input prompt, user text, and cursor if desired
 	Con_DrawInput ();
